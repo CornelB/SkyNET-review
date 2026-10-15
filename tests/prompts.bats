@@ -25,6 +25,8 @@ setup() {
     grep -q '^## Output contract' "$f"
     grep -qx "Worktree: $REPO (the operator's checkout, in place)" "$f"
     grep -q "^Diff: $d/diff.patch$" "$f"
+    # Every lens and seat gets the guard rules with its scope.
+    grep -q '^Guards: hooks deny some commands' "$f"
     # The scope block comes after the lens text.
     [ "$(grep -n '^## Scope' "$f" | cut -d: -f1)" -gt "$(grep -n '^## Output contract' "$f" | cut -d: -f1)" ]
   done
