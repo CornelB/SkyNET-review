@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# pr-worktree.sh — materialize and tear down the exact tree a grumpy review
-# runs against. One script, two subcommands, so the harness allowlist needs
+# pr-worktree.sh — materialize and tear down the exact tree a review-council
+# run reviews. One script, two subcommands, so the harness allowlist needs
 # ONE rule (`Bash(bash */review-council/scripts/pr-worktree.sh *)`) instead of
 # approving `cd && git fetch && git worktree add && mkdir && gh pr diff > …`
 # compound chains segment by segment on every round.

@@ -1,0 +1,7 @@
+# Sourced libs resolve relative to the sourcing script.
+source-path=SCRIPTDIR
+external-sources=true
+# A && B || C is used deliberately as guard-or-die; tr A-Z a-z is ASCII on purpose.
+disable=SC2015,SC2018,SC2019
+# Seat functions are called indirectly through rc_run_capped "$@".
+disable=SC2317
