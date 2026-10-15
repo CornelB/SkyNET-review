@@ -30,6 +30,7 @@
 #   -m  claude-cli model, -e claude-cli effort: the lens model rule the
 #       orchestrator applied (default: the rule from changed lines, no
 #       usage downgrade, which only the session can measure)
+#   RC_CAP_SECONDS  pins the per-process cap instead of sizing it
 #
 # MATRIX
 #   reports/<lens>.<seat>.md    report      reports/<lens>.<seat>.log  log
@@ -58,26 +59,28 @@ SEATS_DIR="$SCRIPT_DIR/seats"
 die() { echo "run-tribunal.sh: $*" >&2; exit 2; }
 
 CMD=${1:-}; [ -n "$CMD" ] && shift
-case "$CMD" in -h|--help|help) sed -n '2,52p' "$0"; exit 0 ;; esac
+case "$CMD" in -h|--help|help) sed -n '2,53p' "$0"; exit 0 ;; esac
 ONLY="" CLAUDE_MODEL_ARG="" CLAUDE_EFFORT_ARG=""
 while getopts "s:m:e:h" opt; do
   case "$opt" in
     s) ONLY=$(printf '%s' "$OPTARG" | tr ',' ' ') ;;
     m) CLAUDE_MODEL_ARG=$OPTARG ;;
     e) CLAUDE_EFFORT_ARG=$OPTARG ;;
-    h) sed -n '2,52p' "$0"; exit 0 ;;
+    h) sed -n '2,53p' "$0"; exit 0 ;;
     *) die "unknown flag; run with -h" ;;
   esac
 done
 shift $((OPTIND - 1))
 RUN_DIR=${1:-}
+# Validate -s here, in the main shell: a die inside $(...) would only end
+# the subshell.
+for s in $ONLY; do
+  case " $RC_SEATS " in *" $s "*) ;; *) die "unknown seat: $s (valid: $RC_SEATS)";; esac
+done
 
-# Seats asked for, in canonical order; unknown names are an error.
+# Seats asked for, in canonical order.
 requested_seats() {
   if [ -z "$ONLY" ]; then echo "$RC_SEATS"; return; fi
-  for s in $ONLY; do
-    case " $RC_SEATS " in *" $s "*) ;; *) die "unknown seat: $s (valid: $RC_SEATS)";; esac
-  done
   out=""
   for s in $RC_SEATS; do
     case " $ONLY " in *" $s "*) out="$out $s";; esac
@@ -176,6 +179,8 @@ worker() {
   [ -d "$WORKTREE" ] || die "worktree missing: $WORKTREE"
   CHANGED=$(rc_json_get "$RUN_DIR/run.json" changed_lines); CHANGED=${CHANGED:-0}
   CAP=$(rc_cap_for_lines "$CHANGED")
+  # RC_CAP_SECONDS pins the cap (tests, or an operator who knows better).
+  case "${RC_CAP_SECONDS:-}" in ''|*[!0-9]*) ;; *) CAP=$RC_CAP_SECONDS ;; esac
   # shellcheck disable=SC2046
   set -- $(rc_model_rule "$CHANGED")
   RC_CLAUDE_MODEL=${CLAUDE_MODEL_ARG:-$1}
