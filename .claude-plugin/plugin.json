@@ -1,0 +1,10 @@
+{
+  "name": "review-council",
+  "version": "0.1.0",
+  "description": "A council of specialised reviewers (code simplicity, security audit, AI hallucination check, correctness) that review a diff, branch, PR or path in parallel and return one merged, deduplicated findings list.",
+  "author": { "name": "CornelB", "url": "https://github.com/CornelB" },
+  "license": "MIT",
+  "homepage": "https://github.com/CornelB/AI-review-council",
+  "repository": "https://github.com/CornelB/AI-review-council",
+  "keywords": ["code-review", "council", "security", "simplicity", "hallucination", "multi-agent"]
+}
