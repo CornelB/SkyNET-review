@@ -108,6 +108,14 @@ if [ -n "$RUN_DIR" ]; then
   ID=$(basename "$RUN_DIR")
 else
   [ -n "$ROOT" ] || ROOT=${CLAUDE_SCRATCHPAD:-${TMPDIR:-/tmp}}
+  mkdir -p "${ROOT%/}/review-council" || die "cannot create ${ROOT%/}/review-council"
+  # mkdir is atomic: a second run in the same second takes the next suffix
+  # instead of sharing the first run's directory.
+  base=$ID n=1
+  until mkdir "${ROOT%/}/review-council/$ID" 2>/dev/null; do
+    n=$((n + 1)); [ "$n" -le 99 ] || die "cannot create a run directory for $base"
+    ID="$base-$n"
+  done
   RUN_DIR="${ROOT%/}/review-council/$ID"
 fi
 mkdir -p "$RUN_DIR/prompts" "$RUN_DIR/reports" || die "cannot create $RUN_DIR"
