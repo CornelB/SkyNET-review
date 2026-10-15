@@ -62,7 +62,7 @@ progress() { # $1=run dir; echoes "<state>|<done>/<total>"
     for f in "$d"/reports/*.local.md; do [ -f "$f" ] && done_n=$((done_n + 1)); done
     [ "$state" = prepared ] && state=running
   fi
-  [ -f "$d/report.md" ] && state=done
+  [ -f "$d/report.md" ] && state="done"
   echo "${state:-unknown}|${done_n:-0}/${total:-0}"
 }
 
