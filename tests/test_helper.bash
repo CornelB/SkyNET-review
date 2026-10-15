@@ -22,8 +22,13 @@ setup_env() {
   export HOME="$BATS_TEST_TMPDIR/home"
   export XDG_STATE_HOME="$BATS_TEST_TMPDIR/state"
   export XDG_CACHE_HOME="$BATS_TEST_TMPDIR/cache"
+  # The scratchpad is reached through a symlink, as macOS reaches $TMPDIR
+  # (/var -> /private/var), so path handling is tested on every host.
   export TMPDIR="$BATS_TEST_TMPDIR"
+  mkdir -p "$BATS_TEST_TMPDIR/scratch.real"
+  ln -sfn "$BATS_TEST_TMPDIR/scratch.real" "$BATS_TEST_TMPDIR/scratch"
   export CLAUDE_SCRATCHPAD="$BATS_TEST_TMPDIR/scratch"
+  export SCRATCH_REAL; SCRATCH_REAL=$(cd "$CLAUDE_SCRATCHPAD" && pwd -P)
   export FAKE_LOG="$BATS_TEST_TMPDIR/fake.log"
   mkdir -p "$HOME" "$CLAUDE_SCRATCHPAD"
   unset OLLAMA_REVIEWER_MODEL CODEX_MODEL CURSOR_CLI_MODEL KIMI_CLI_MODEL RC_CAP_SECONDS

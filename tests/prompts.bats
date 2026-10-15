@@ -79,7 +79,7 @@ setup() {
   run prep -M tribunal prepare uncommitted
   d=$(field run_dir)
   [[ "$(basename "$d")" == review-uncommitted-* ]]
-  [ "$d" = "$CLAUDE_SCRATCHPAD/review-council/$(basename "$d")" ]
+  [ "$d" = "$SCRATCH_REAL/review-council/$(basename "$d")" ]
   grep -q '"mode":"tribunal","state":"prepared"' "$d/status.json"
   grep -qx "$d" "$XDG_STATE_HOME/review-council/runs.txt"
 }

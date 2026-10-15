@@ -29,13 +29,15 @@ all_runs() {
   {
     [ -f "$(rc_index_file)" ] && cat "$(rc_index_file)"
     for d in "$(rc_runs_root)"/review-*; do [ -d "$d" ] && echo "$d"; done
-  } | awk 'NF && !seen[$0]++' | while IFS= read -r d; do
-    [ -f "$d/run.json" ] && echo "$d"
-  done
+  } | while IFS= read -r d; do
+    # Physical paths, as prepare-run.sh records them, so one run reached
+    # through a symlinked root (macOS /var) is listed once.
+    [ -f "$d/run.json" ] && (cd "$d" && pwd -P)
+  done | awk 'NF && !seen[$0]++'
 }
 
 resolve() { # $1=id or dir
-  if [ -f "$1/run.json" ]; then (cd "$1" && pwd); return; fi
+  if [ -f "$1/run.json" ]; then (cd "$1" && pwd -P); return; fi
   found=""
   while IFS= read -r d; do
     [ "$(basename "$d")" = "$1" ] && found=$d

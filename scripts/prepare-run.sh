@@ -55,7 +55,7 @@ case "$MODE" in local|tribunal) ;; *) die "-M takes local or tribunal";; esac
 if [ "$CMD" = "cleanup" ]; then
   [ -n "$TARGET" ] || die "usage: prepare-run.sh cleanup <run-dir>"
   [ -f "$TARGET/run.json" ] || die "not a run directory: $TARGET"
-  RUN_DIR=$(cd "$TARGET" && pwd)
+  RUN_DIR=$(cd "$TARGET" && pwd -P)
   PR=$(rc_json_get "$RUN_DIR/run.json" pr)
   REPO=$(rc_json_get "$RUN_DIR/run.json" repo)
   if [ -n "$PR" ] && [ "$PR" != "null" ]; then
