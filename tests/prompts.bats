@@ -8,7 +8,9 @@ field() { sed -nE 's/.*"'"$1"'":"?([^",]*)"?[,}].*/\1/p' <<<"$output"; }
 
 setup() {
   setup_env
-  REPO="$BATS_TEST_TMPDIR/repo"
+  # Physical path, as git reports it (macOS /var -> /private/var).
+  mkdir -p "$BATS_TEST_TMPDIR/repo"
+  REPO=$(cd "$BATS_TEST_TMPDIR/repo" && pwd -P)
 }
 
 @test "every lens prompt is the lens file followed by the scope block" {
@@ -103,4 +105,13 @@ setup() {
   run prep prepare uncommitted; d2=$(field run_dir)
   [ -n "$d1" ] && [ -n "$d2" ]
   [ "$d1" != "$d2" ]
+}
+
+@test "--run-dir inside the repository through a symlink is refused" {
+  make_repo "$REPO"; printf 'x\n' >>"$REPO/a.txt"
+  ln -s "$REPO" "$BATS_TEST_TMPDIR/link"
+  run prep -r "$BATS_TEST_TMPDIR/link/review" prepare uncommitted
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"inside the repository"* ]]
+  [ ! -e "$REPO/review" ]
 }

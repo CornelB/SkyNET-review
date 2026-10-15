@@ -8,7 +8,7 @@ HOST_BASH="$(command -v bash)"
 
 SYSTEM_TOOLS="bash sh env cat cut tr sed awk grep head tail wc date mkdir rm rmdir mv cp ls
   basename dirname sleep kill pgrep perl jq git find xargs sort touch chmod mktemp uname
-  setsid nohup readlink diff od printf true false tee"
+  setsid nohup readlink diff od printf true false tee ln"
 
 setup_env() {
   FAKEBIN="$BATS_TEST_TMPDIR/fakebin"

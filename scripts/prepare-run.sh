@@ -119,7 +119,9 @@ else
   RUN_DIR="${ROOT%/}/review-council/$ID"
 fi
 mkdir -p "$RUN_DIR/prompts" "$RUN_DIR/reports" || die "cannot create $RUN_DIR"
-RUN_DIR=$(cd "$RUN_DIR" && pwd)
+# Physical path: git reports the repository physically, and a symlinked path
+# (macOS /var -> /private/var) must not slip past the check below.
+RUN_DIR=$(cd "$RUN_DIR" && pwd -P)
 case "$RUN_DIR/" in "$REPO"/*) rm -rf "$RUN_DIR"; die "run dir is inside the repository: $RUN_DIR";; esac
 
 # ------------------------------------------------------------------ scope ---
