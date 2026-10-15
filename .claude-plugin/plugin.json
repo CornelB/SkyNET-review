@@ -1,10 +1,29 @@
 {
   "name": "review-council",
   "version": "0.1.0",
-  "description": "A council of specialised reviewers (code simplicity, security audit, AI hallucination check, correctness) that review a diff, branch, PR or path in parallel and return one merged, deduplicated findings list.",
-  "author": { "name": "CornelB", "url": "https://github.com/CornelB" },
+  "description": "Review a PR, branch, working tree or path through four lenses (simplicity, functionality, security, maintainability), with fresh-context local subagents or a tribunal of external AI coding harnesses (codex, antigravity, grok, claude, kimi, cursor, local ollama), and get one verified, deduplicated report.",
+  "author": {
+    "name": "CornelB",
+    "url": "https://github.com/CornelB"
+  },
   "license": "MIT",
   "homepage": "https://github.com/CornelB/AI-review-council",
   "repository": "https://github.com/CornelB/AI-review-council",
-  "keywords": ["code-review", "council", "security", "simplicity", "hallucination", "multi-agent"]
+  "keywords": [
+    "code-review",
+    "review",
+    "council",
+    "tribunal",
+    "lenses",
+    "simplicity",
+    "functionality",
+    "security",
+    "maintainability",
+    "hallucination",
+    "multi-model",
+    "codex",
+    "antigravity",
+    "grok",
+    "ollama"
+  ]
 }
