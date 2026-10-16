@@ -45,10 +45,10 @@ discover() { "$HOST_BASH" "$SCRIPTS/run-tribunal.sh" discover "$@"; }
   [ "$output" = "codex-oss|available|ollama qwen3-coder, read-only sandbox" ]
 }
 
-@test "codex: CODEX_MODEL shows in the status line" {
+@test "codex: the status line shows the model rule and the weekly usage" {
   fake_codex
-  CODEX_MODEL=gpt-test run discover -s codex
-  [ "$output" = "codex|available|gpt-test, xhigh, read-only sandbox" ]
+  FAKE_CODEX_WEEK=12 run discover -s codex
+  [ "$output" = "codex|available|gpt-6-astra, low, week 12% (live), read-only sandbox" ]
 }
 
 @test "claude-cli: unauthenticated claude is disabled" {

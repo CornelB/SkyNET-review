@@ -1,12 +1,13 @@
 #!/usr/bin/env bash
 # claude-cli seat: a blind headless Claude Code session. Contract: lib/seat.sh.
-# Model and effort follow the local lens rule; the launcher passes the values
-# it applied in RC_CLAUDE_MODEL and RC_CLAUDE_EFFORT (default opus, xhigh).
+# Model and effort follow the Claude model rule for the tribunal; the launcher
+# passes the values it applied in RC_CLAUDE_MODEL and RC_CLAUDE_EFFORT
+# (default fable, high).
 set -u
 SEAT=claude-cli
 
-model() { m=${RC_CLAUDE_MODEL:-opus}; case "$m" in *[!a-z0-9.-]*|"") m=opus;; esac; echo "$m"; }
-effort() { e=${RC_CLAUDE_EFFORT:-xhigh}; case "$e" in low|medium|high|xhigh|max) ;; *) e=xhigh;; esac; echo "$e"; }
+model() { m=${RC_CLAUDE_MODEL:-fable}; case "$m" in *[!a-z0-9.-]*|"") m=fable;; esac; echo "$m"; }
+effort() { e=${RC_CLAUDE_EFFORT:-high}; case "$e" in low|medium|high|xhigh|max) ;; *) e=high;; esac; echo "$e"; }
 
 seat_gate() {
   command -v claude >/dev/null 2>&1 || { GATE_REASON="claude not on PATH"; return 1; }

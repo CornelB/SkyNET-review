@@ -1,5 +1,5 @@
 #!/usr/bin/env bats
-# Cap sizing, changed-line counting and the lens model rule.
+# Cap sizing, changed-line counting and the model rules.
 
 load test_helper
 
@@ -20,9 +20,19 @@ lib() { . "$SCRIPTS/lib/common.sh"; "$@"; }
   run lib rc_cap_for_lines 900000; [ "$output" = 1800 ]
 }
 
-@test "model rule: Opus xhigh under 100, Fable medium from 100" {
-  run lib rc_model_rule 99;  [ "$output" = "opus xhigh" ]
-  run lib rc_model_rule 100; [ "$output" = "fable medium" ]
+@test "claude rule: Fable low local, Fable high tribunal, Opus xhigh above 80%" {
+  run lib rc_model_rule local;          [ "$output" = "fable low" ]
+  run lib rc_model_rule local 80;       [ "$output" = "fable low" ]
+  run lib rc_model_rule local 81;       [ "$output" = "opus xhigh" ]
+  run lib rc_model_rule tribunal;       [ "$output" = "fable high" ]
+  run lib rc_model_rule tribunal 80;    [ "$output" = "fable high" ]
+  run lib rc_model_rule tribunal 93;    [ "$output" = "opus xhigh" ]
+}
+
+@test "codex rule: Astra low up to 60%, Sol xhigh above, Astra when unknown" {
+  run lib rc_codex_rule;    [ "$output" = "gpt-6-astra low" ]
+  run lib rc_codex_rule 60; [ "$output" = "gpt-6-astra low" ]
+  run lib rc_codex_rule 61; [ "$output" = "gpt-6.1-sol xhigh" ]
 }
 
 @test "changed lines: headers excluded, a removed '-- ' line still counts" {

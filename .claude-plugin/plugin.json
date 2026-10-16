@@ -1,7 +1,7 @@
 {
   "name": "review-council",
-  "version": "0.1.1",
-  "description": "Review a PR, branch, working tree or path through four lenses (simplicity, functionality, security, maintainability), with fresh-context local subagents or a tribunal of external AI coding harnesses (codex, antigravity, grok, claude, kimi, cursor, local ollama), and get one verified, deduplicated report.",
+  "version": "0.2.0",
+  "description": "Review a PR or a branch through four lenses (simplicity, functionality, security, maintainability), with fresh-context local subagents or a tribunal of external AI coding harnesses (codex, antigravity, grok, claude, kimi, cursor, local ollama), and get one verified, deduplicated report.",
   "author": {
     "name": "CornelB",
     "url": "https://github.com/CornelB"

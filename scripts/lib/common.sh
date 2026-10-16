@@ -27,9 +27,40 @@ rc_cap_for_lines() { # $1=changed lines
   fi
 }
 
-# Lens model rule, before any usage downgrade: "<model> <effort>".
-rc_model_rule() { # $1=changed lines
-  if [ "$1" -lt 100 ]; then echo "opus xhigh"; else echo "fable medium"; fi
+# Claude model rule: "<model> <effort>". Fable, low for the local lenses and
+# high for the tribunal's claude-cli seat; Opus xhigh once the weekly Fable
+# usage is above 80%. Unknown usage keeps Fable.
+rc_model_rule() { # $1=local|tribunal $2=weekly Fable % used (may be empty)
+  case "${2:-}" in
+    ''|*[!0-9]*) ;;
+    *) [ "$2" -gt 80 ] && { echo "opus xhigh"; return; } ;;
+  esac
+  if [ "$1" = tribunal ]; then echo "fable high"; else echo "fable low"; fi
+}
+
+# OpenAI model rule for the codex seat: "<model> <effort>". Astra at low
+# effort; Sol xhigh once the weekly Codex usage is above 60%. Unknown usage
+# keeps Astra.
+rc_codex_rule() { # $1=weekly Codex % used (may be empty)
+  case "${1:-}" in
+    ''|*[!0-9]*) ;;
+    *) [ "$1" -gt 60 ] && { echo "gpt-6.1-sol xhigh"; return; } ;;
+  esac
+  echo "gpt-6-astra low"
+}
+
+# Reads the weekly Codex usage and applies the rule once:
+# "<model>|<effort>|<usage note>".
+rc_codex_pick() {
+  pct="" note="week usage unknown"
+  if command -v python3 >/dev/null 2>&1 \
+     && u=$(python3 "$(dirname "${BASH_SOURCE[0]}")/codex-usage.py" 2>/dev/null); then
+    pct=${u%%|*}
+    note="week ${pct}% ($(printf '%s' "$u" | cut -d'|' -f2))"
+  fi
+  # shellcheck disable=SC2046
+  set -- $(rc_codex_rule "$pct")
+  echo "$1|$2|$note"
 }
 
 # Escape a value for a JSON string body.

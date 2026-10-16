@@ -14,7 +14,7 @@ One command that judges a change from four angles, either locally (fresh-context
 
 ## Targets
 
-PR number or URL, branch, `uncommitted`, `staged`, a path. Nothing named: uncommitted changes, or the last commit if the tree is clean.
+PR number or URL, or a branch. Nothing named: the current branch, that is, the commits on it that the default branch does not have. Uncommitted changes are never in scope.
 
 A PR is materialized in a detached worktree under the run directory, pinned to the PR head OID (never FETCH_HEAD), with an explicit `<merge-base>..<head>` range and the diff written to a file, as `scripts/pr-worktree.sh` does today. The worktree is removed at the end of the run, even when a seat fails. A seat that reviews anything other than that worktree and range is void.
 
@@ -37,14 +37,11 @@ Per-lens output contract: `Verdict:` on line 1; one finding per line, `N. <file>
 
 Exclusive. The operator picks one per run.
 
-**local** (default): one subagent per lens, launched in parallel, in the background, with only its lens prompt and the scope block. No session transcript, no conversation context. Model rule:
+**local** (default): one subagent per lens, launched in parallel, in the background, with only its lens prompt and the scope block. No session transcript, no conversation context.
 
-| Changed lines in the diff | Model |
-|---------------------------|-------|
-| under 100 | Opus, effort xhigh |
-| 100 and above | Fable, effort medium |
+Model rules. Claude runs on Fable: effort low for the local lenses, effort high for the tribunal's `claude-cli` seat. Both drop to Opus xhigh when the desktop app's `get_usage` tool reports the "Weekly · Fable" usage above 80%; the downgrade is announced before launch and recorded in the report header. Without that tool (terminal `claude`, `claude -p`), Fable. `--effort=` overrides the effort, never the model.
 
-Fable is downgraded to Opus xhigh when the account's "Weekly · Fable" usage is at or above 85%. The usage comes from the desktop app's `get_usage` tool. When that tool is absent (terminal `claude`, `claude -p`), Fable is used. A downgrade is announced in the session where the command was issued, before the lenses launch, and recorded in the report header. `--model=` and `--effort=` override the rule.
+The `codex` seat runs GPT-6 Astra (`gpt-6-astra`) at effort low, and GPT-6.1 Sol (`gpt-6.1-sol`) at xhigh when the weekly Codex usage is above 60%. `scripts/lib/codex-usage.py` reads that usage from `codex app-server` (`account/rateLimits/read`, no model turn), or from the last `rate_limits` event in the Codex session files when the live read fails. Unknown usage keeps Astra. The launcher applies the rule once per run and prints it before the tribunal starts.
 
 **tribunal** (`--tribunal`): every available seat runs every lens prompt in the worktree, 4 × N processes. The lens subagents do not run. Seats are blind to each other and to any earlier local run. All seats launch in parallel except `codex-oss`, whose four runs go one at a time. Zero available seats: abort loudly before anything runs. A seat that times out or returns an invalid report mid-run: the run finishes with the rest and the header names the dead seat and why.
 
@@ -56,10 +53,10 @@ All seats are harnesses that read the tree in the worktree under their read-only
 
 | Seat | Gate | Invocation shape |
 |------|------|------------------|
-| codex | `codex` on PATH | `codex exec --skip-git-repo-check -s read-only`, model from `CODEX_MODEL` when set |
+| codex | `codex` on PATH | `codex exec --skip-git-repo-check -s read-only`, model and effort from the codex rule |
 | antigravity | `agy` on PATH | `agy --sandbox`, no `--mode`; pinned `read_file(*)` allow-list merged into its settings as `tribunal.sh` does today. No gemini-cli fallback. |
 | grok | `grok` on PATH | `grok --sandbox read-only -p`, with the Linux podman-socket mask from `tribunal.sh` |
-| claude-cli | `claude` on PATH, seated like any other | `claude -p --permission-mode plan --setting-sources "" --no-session-persistence`, read-only tools only; model and effort follow the local mode rule |
+| claude-cli | `claude` on PATH, seated like any other | `claude -p --permission-mode plan --setting-sources "" --no-session-persistence`, read-only tools only; model and effort follow the Claude rule for the tribunal |
 | kimi-cli | `kimi` on PATH | headless, read-only |
 | cursor-cli | `cursor-agent` on PATH | headless, read-only |
 | codex-oss | `codex` AND `ollama` on PATH AND `OLLAMA_REVIEWER_MODEL` set; otherwise `disabled (reason)` | `codex exec --oss --local-provider ollama -m $OLLAMA_REVIEWER_MODEL -s read-only` |
@@ -78,7 +75,7 @@ Wall-clock cap per process from changed lines: 600 s to 2000, 1200 s to 6000, 18
 
 ## Report
 
-1. Header: mode, seats ran / skipped with reason, model rule applied and any downgrade, base, `<merge-base>..<head>`, diff source when not `gh pr diff`.
+1. Header: mode, seats ran / skipped with reason, Claude and codex model and effort applied and any downgrade, base, `<merge-base>..<head>`, diff source when not `gh pr diff`.
 2. One-line verdict: pass / pass with concerns / fail.
 3. Claims table from the functionality lens.
 4. Findings grouped by lens in priority order (simplicity, functionality, security, maintainability), severity 🔴🟡🔵❓ inside each, with `CONFIRMED` / `UNCORROBORATED` tags.
@@ -89,14 +86,14 @@ Terse: `file:L<line> | severity | problem. fix.`. Security findings and architec
 
 ## Runs and results
 
-Run directory: `<scratchpad or $TMPDIR>/review-council/review-<target>-<ts>/`, overridable with `--run-dir=<path>`. Holds the worktree (PR mode), `diff.patch`, `pr-body.md`, one prompt file per lens, one report file per (lens, seat), each seat's `.log`, `status.json`, and `report.md`. `--output=<path>` writes a copy of `report.md`.
+Run directory: `<scratchpad or $TMPDIR>/review-council/review-<target>-<ts>/`. Holds the worktree (PR mode), `diff.patch`, `pr-body.md`, one prompt file per lens, one report file per (lens, seat), each seat's `.log`, `status.json`, and `report.md`.
 
 A tribunal is launched as a background process so the session stays usable and a usage-limit hit mid-run loses nothing already written. The orchestrator is notified when it ends.
 
 ## Commands
 
-- `/review-council:review [target] [--tribunal] [--seats=a,b] [--model=] [--effort=] [--run-dir=] [--output=]`
-- `/review-council:status`: one line per seat, `available (model, sandbox)` or `disabled (reason)`, plus the lens model rule that would apply right now. Read-only.
+- `/review-council:review [PR number|PR URL|branch] [--tribunal] [--effort=]`
+- `/review-council:status`: one line per seat, `available (model, sandbox)` or `disabled (reason)`, plus the Claude and codex models that would apply right now. Read-only.
 - `/review-council:result [list | <id> | cancel <id>]`: list runs newest first (id, target, mode, state, seats done/total); print a run's `report.md`, or the seat reports so far while it runs; cancel a running tribunal.
 
 ## Repository rules

@@ -36,7 +36,7 @@ Four lenses judge one change: simplicity, functionality, security, maintainabili
 
 ## Run directory
 
-`<scratchpad or $TMPDIR>/review-council/review-<target>-<ts>/`, or `--run-dir=<path>`:
+`<scratchpad or $TMPDIR>/review-council/review-<target>-<ts>/`:
 
 - `run.json`: target, kind, worktree, range, base, merge-base, head, diff source, claims, changed lines.
 - `diff.patch`, `pr-body.md` (PR mode), `scope.md`, `prompts/<lens>.md` (lens prompt + scope block).
@@ -52,9 +52,11 @@ Every run directory is appended to `$XDG_STATE_HOME/review-council/runs.txt` (de
 
 Output contract for every lens: `Verdict: pass | pass with concerns | fail` on line 1; one finding per line `N. <file>:L<line> | 🔴 bug | 🟡 risk | 🔵 nit | ❓ q | <problem>. <fix>.`; functionality adds the claims table (`VERIFIED` / `FALSE` / `UNPROVABLE` with `file:line`); `Not checked:` last.
 
-## Model rule (local lenses and the claude-cli seat)
+## Model rules
 
-Under 100 changed lines: Opus, effort xhigh. 100 and above: Fable, effort medium. Fable drops to Opus xhigh when the desktop app's `get_usage` tool reports the "Weekly · Fable" usage at or above 85%; the downgrade is announced before launch and recorded in the report header. Without that tool (terminal `claude`, `claude -p`), Fable. `--model=` and `--effort=` override.
+Claude runs on Fable: effort low for the local lenses, effort high for the tribunal's `claude-cli` seat. Both drop to Opus xhigh when the desktop app's `get_usage` tool reports the "Weekly · Fable" usage above 80%; the downgrade is announced before launch and recorded in the report header. Without that tool (terminal `claude`, `claude -p`), Fable. `--effort=` overrides the effort, never the model.
+
+The `codex` seat runs GPT-6 Astra (`gpt-6-astra`) at effort low, and GPT-6.1 Sol (`gpt-6.1-sol`) at xhigh when the weekly Codex usage is above 60%. `scripts/lib/codex-usage.py` reads that usage from `codex app-server` (`account/rateLimits/read`, no model turn), or from the last `rate_limits` event in the Codex session files when the live read fails. Unknown usage keeps Astra. The launcher applies the rule once per run and prints it before the tribunal starts.
 
 ## Seats
 
@@ -62,10 +64,10 @@ All seats are harnesses that read the tree in the worktree under their read-only
 
 | Seat | Gate | Invocation |
 |------|------|------------|
-| codex | `codex` on PATH | `codex exec --skip-git-repo-check -s read-only`, `-m $CODEX_MODEL` when set, effort xhigh |
+| codex | `codex` on PATH | `codex exec --skip-git-repo-check -s read-only`, model and effort from the codex rule |
 | antigravity | `agy` on PATH | `agy --sandbox`, no `--mode`, no shell; best flash slug from `agy models`, cached |
 | grok | `grok` on PATH | `grok --sandbox read-only --effort xhigh -p`, Linux podman-socket mask when needed |
-| claude-cli | `claude` on PATH and authenticated | `claude -p --permission-mode plan --setting-sources "" --safe-mode --no-session-persistence --tools Read,Grep,Glob`, model rule above |
+| claude-cli | `claude` on PATH and authenticated | `claude -p --permission-mode plan --setting-sources "" --safe-mode --no-session-persistence --tools Read,Grep,Glob`, Claude rule above |
 | kimi-cli | `kimi` and `jq` on PATH | `kimi -p --agent-file scripts/seats/kimi-agent.md` (read tools only) |
 | cursor-cli | `cursor-agent` on PATH | `cursor-agent -p --mode ask --trust` |
 | codex-oss | `codex` and `ollama` on PATH and `OLLAMA_REVIEWER_MODEL` set | `codex exec --oss --local-provider ollama -m $OLLAMA_REVIEWER_MODEL -s read-only` |

@@ -17,7 +17,7 @@ In priority order. Each lens is one self-contained prompt in `prompts/lenses/`; 
 
 Exclusive; pick one per run.
 
-- **local** (default): one subagent per lens, in parallel, with only its lens prompt and the scope. Model: under 100 changed lines, Opus at effort xhigh; 100 and above, Fable at effort medium. Fable drops to Opus xhigh when the desktop app reports the weekly Fable usage at or above 85%; the downgrade is announced before launch and named in the report header. `--model=` and `--effort=` override.
+- **local** (default): one subagent per lens, in parallel, with only its lens prompt and the scope. Model: Fable at effort low; Opus xhigh when the desktop app reports the weekly Fable usage above 80%. The downgrade is announced before launch and named in the report header. `--effort=` overrides the effort.
 - **tribunal** (`--tribunal`): every available seat runs every lens prompt in the worktree, detached in the background. Seats are blind to each other. Zero available seats aborts before anything runs.
 
 Findings from two or more sources are `CONFIRMED`. A single-source finding is verified against the code or marked `UNCORROBORATED`. The verdict comes only from findings that survived verification. Claude sources count as one voice.
@@ -28,10 +28,10 @@ Harnesses only, each in its own read-only or plan sandbox, with no approval bypa
 
 | Seat | Available when |
 |------|----------------|
-| `codex` | `codex` on PATH |
+| `codex` | `codex` on PATH. GPT-6 Astra low; GPT-6.1 Sol xhigh when the weekly Codex usage is above 60% |
 | `antigravity` | `agy` on PATH (merges a pinned `read_file(*)` allow-list into its settings on first use) |
 | `grok` | `grok` on PATH |
-| `claude-cli` | `claude` on PATH and logged in |
+| `claude-cli` | `claude` on PATH and logged in. Fable high; Opus xhigh when the weekly Fable usage is above 80% |
 | `kimi-cli` | `kimi` and `jq` on PATH |
 | `cursor-cli` | `cursor-agent` on PATH |
 | `codex-oss` | `codex` and `ollama` on PATH and `OLLAMA_REVIEWER_MODEL` set; its four runs go one at a time |
@@ -60,27 +60,26 @@ A tribunal spans turns. For a prompt-free run add once to `~/.claude/settings.js
 ```
 /review-council:review 123
 /review-council:review https://github.com/owner/repo/pull/123 --tribunal
-/review-council:review feature/branch --tribunal --seats=codex,grok
-/review-council:review uncommitted --model=opus --effort=high
-/review-council:review staged --output=./review.md
+/review-council:review
+/review-council:review feature/branch --tribunal
+/review-council:review feature/branch --effort=high
 /review-council:status
 /review-council:result
 /review-council:result review-pr-123-20261015-101500
 /review-council:result cancel review-pr-123-20261015-101500
 ```
 
-Targets: PR number or URL, branch, `uncommitted`, `staged`, a path. Nothing named: uncommitted changes, or the last commit if the tree is clean. A PR is reviewed in a detached worktree pinned to the PR head OID, with an explicit `<merge-base>..<head>` range, and the worktree is removed at the end.
+Targets: PR number or URL, or a branch. Nothing named: the current branch, that is, the commits on it that the default branch does not have. Uncommitted changes are never in scope. A PR is reviewed in a detached worktree pinned to the PR head OID, with an explicit `<merge-base>..<head>` range, and the worktree is removed at the end.
 
-`/review-council:status` lists every seat as available or disabled with the reason, and the lens model rule that applies now. `/review-council:result` lists runs newest first, prints a run's report (or the seat reports so far while a tribunal runs), or cancels a running tribunal.
+`/review-council:status` lists every seat as available or disabled with the reason, and the Claude and codex models that apply now. `/review-council:result` lists runs newest first, prints a run's report (or the seat reports so far while a tribunal runs), or cancels a running tribunal.
 
 ## Environment
 
 | Variable | Effect |
 |----------|--------|
 | `OLLAMA_REVIEWER_MODEL` | Enables the `codex-oss` seat with this local ollama model. |
-| `CODEX_MODEL` | Model for the `codex` seat; unset uses the CLI's default. |
 | `CURSOR_CLI_MODEL`, `KIMI_CLI_MODEL` | Model for those seats; unset uses the CLI's default. |
-| `CLAUDE_SCRATCHPAD`, `TMPDIR` | Parent of the default run directory, `<dir>/review-council/review-<target>-<ts>/`. `--run-dir=<path>` sets it exactly. |
+| `CLAUDE_SCRATCHPAD`, `TMPDIR` | Parent of the default run directory, `<dir>/review-council/review-<target>-<ts>/`. |
 | `XDG_STATE_HOME` | Where the run index lives (`review-council/runs.txt`, default `~/.local/state`). |
 | `RC_CAP_SECONDS` | Pins the per-process cap instead of sizing it from the diff. |
 

@@ -23,7 +23,7 @@ runs() { "$HOST_BASH" "$SCRIPTS/runs.sh" "$@"; }
   [ "$status" -eq 0 ]
   [ "${#lines[@]}" -eq 4 ]
   for lens in simplicity functionality security maintainability; do
-    grep -qx "$lens|codex|ok|default model, xhigh, read-only sandbox" "$d/reports/$lens.codex.status"
+    grep -qx "$lens|codex|ok|gpt-6-astra, low, week usage unknown, read-only sandbox" "$d/reports/$lens.codex.status"
     head -n 1 "$d/reports/$lens.codex.md" | grep -qx 'Verdict: pass'
   done
   grep -q '"state":"done"' "$d/status.json"
@@ -31,7 +31,31 @@ runs() { "$HOST_BASH" "$SCRIPTS/runs.sh" "$@"; }
   grep -q '"seats":\["codex"\]' "$d/status.json"
   grep -q '"grok":"grok not on PATH"' "$d/status.json"
   grep -q '"dead":\[\]' "$d/status.json"
-  grep -q '"claude_model":"opus","claude_effort":"xhigh"' "$d/status.json"
+  grep -q '"claude_model":"fable","claude_effort":"high","codex_model":"gpt-6-astra","codex_effort":"low"' "$d/status.json"
+}
+
+@test "codex: Astra low up to 60% weekly usage, Sol xhigh above" {
+  fake_codex
+  d=$(prepared_run)
+  FAKE_CODEX_WEEK=60 run tribunal run -s codex "$d"
+  [ "$status" -eq 0 ]
+  grep -q '|ok|gpt-6-astra, low, week 60% (live), read-only sandbox' "$d/reports/security.codex.status"
+  [ "$(sort -u "$FAKE_LOG.models")" = gpt-6-astra ]
+  : >"$FAKE_LOG.models"
+  FAKE_CODEX_WEEK=61 run tribunal run -s codex "$d"
+  grep -q '|ok|gpt-6.1-sol, xhigh, week 61% (live), read-only sandbox' "$d/reports/security.codex.status"
+  grep -q '"codex_model":"gpt-6.1-sol","codex_effort":"xhigh","codex_usage":"week 61% (live)"' "$d/status.json"
+  [ "$(sort -u "$FAKE_LOG.models")" = gpt-6.1-sol ]
+}
+
+@test "codex: the last session snapshot stands in when the live read fails" {
+  fake_codex
+  d=$(prepared_run)
+  mkdir -p "$HOME/.codex/sessions/2026/10/16"
+  printf '{"timestamp":"2026-10-16T10:00:00Z","payload":{"rate_limits":{"primary":{"used_percent":10,"window_minutes":300,"resets_at":null},"secondary":{"used_percent":75.5,"window_minutes":10080,"resets_at":null}}}}\n' \
+    >"$HOME/.codex/sessions/2026/10/16/rollout-1.jsonl"
+  run tribunal run -s codex "$d"
+  grep -q '|ok|gpt-6.1-sol, xhigh, week 76% (snapshot)' "$d/reports/security.codex.status"
 }
 
 @test "-m and -e reach the claude-cli seat" {
@@ -81,14 +105,15 @@ runs() { "$HOST_BASH" "$SCRIPTS/runs.sh" "$@"; }
   d=$(prepared_run)
   run tribunal start "$d"
   [ "$status" -eq 0 ]
-  [[ "$output" == started\|*\|"$d" ]]
+  [ "${lines[0]}" = "codex-model|gpt-6-astra|low|week usage unknown" ]
+  [[ "${lines[1]}" == started\|*\|"$d" ]]
   run tribunal wait "$d"
   [ "$status" -eq 0 ]
   [ "${lines[0]}" = "state|done" ]
   [ "${#lines[@]}" -eq 5 ]
   id=$(basename "$d")
   run runs list
-  [ "${lines[0]}" = "$id|uncommitted|tribunal|done|4/4|$d" ]
+  [ "${lines[0]}" = "$id|feature|tribunal|done|4/4|$d" ]
   run runs show "$id"
   [ "${lines[0]}" = "state|done|4/4" ]
   [[ "${lines[1]}" == functionality\|codex\|ok\|*\|"$d/reports/functionality.codex.md" ]]

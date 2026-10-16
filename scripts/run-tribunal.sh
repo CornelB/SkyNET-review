@@ -11,7 +11,9 @@
 #   run-tribunal.sh start [-s seat,seat] [-m model] [-e effort] <run-dir>
 #     Discovers seats, aborts loudly (exit 3) when none is available, else
 #     launches `run` detached in its own session and returns at once with
-#     `started|<pid>|<run-dir>`. The tribunal survives the session that
+#     `started|<pid>|<run-dir>`. When the codex seat is available it first
+#     prints `codex-model|<model>|<effort>|<usage note>`: the codex rule,
+#     applied once for the whole run. The tribunal survives the session that
 #     started it; everything already written stays on disk.
 #
 #   run-tribunal.sh run [-s seat,seat] [-m model] [-e effort] <run-dir>
@@ -27,9 +29,11 @@
 #     removes the PR worktree.
 #
 #   -s  restrict to these seats (comma-separated; default all available)
-#   -m  claude-cli model, -e claude-cli effort: the lens model rule the
-#       orchestrator applied (default: the rule from changed lines, no
-#       usage downgrade, which only the session can measure)
+#   -m  claude-cli model, -e claude-cli effort: the Claude model rule the
+#       orchestrator applied (default Fable high: the weekly Fable usage
+#       that downgrades it is measured by the session, not here)
+#   The codex seat's model and effort follow rc_codex_rule (lib/common.sh),
+#   from the weekly Codex usage that lib/codex-usage.py reads.
 #   RC_CAP_SECONDS  pins the per-process cap instead of sizing it
 #
 # MATRIX
@@ -44,7 +48,8 @@
 #
 # STATUS
 #   status.json: id, target, mode, state (running | done | cancelled |
-#   aborted | failed), pid, started, finished, cap, seats, skipped, dead,
+#   aborted | failed), pid, started, finished, cap, claude_model,
+#   claude_effort, codex_model, codex_effort, codex_usage, seats, skipped, dead,
 #   cells_total, cells_done, cells[]. Rewritten atomically as cells finish.
 #
 # No approval bypasses, no passthrough flags: every CLI flag lives in
@@ -59,14 +64,14 @@ SEATS_DIR="$SCRIPT_DIR/seats"
 die() { echo "run-tribunal.sh: $*" >&2; exit 2; }
 
 CMD=${1:-}; [ -n "$CMD" ] && shift
-case "$CMD" in -h|--help|help) sed -n '2,53p' "$0"; exit 0 ;; esac
+case "$CMD" in -h|--help|help) sed -n '2,56p' "$0"; exit 0 ;; esac
 ONLY="" CLAUDE_MODEL_ARG="" CLAUDE_EFFORT_ARG=""
 while getopts "s:m:e:h" opt; do
   case "$opt" in
     s) ONLY=$(printf '%s' "$OPTARG" | tr ',' ' ') ;;
     m) CLAUDE_MODEL_ARG=$OPTARG ;;
     e) CLAUDE_EFFORT_ARG=$OPTARG ;;
-    h) sed -n '2,53p' "$0"; exit 0 ;;
+    h) sed -n '2,56p' "$0"; exit 0 ;;
     *) die "unknown flag; run with -h" ;;
   esac
 done
@@ -86,6 +91,18 @@ requested_seats() {
     case " $ONLY " in *" $s "*) out="$out $s";; esac
   done
   echo "$out"
+}
+
+# The codex rule, once per run, exported so every codex cell and status line
+# uses the same model. Only when the codex seat is asked for and installed.
+pick_codex() {
+  [ -z "${RC_CODEX_MODEL:-}" ] || return 0
+  case " $(requested_seats) " in *" codex "*) ;; *) return 0;; esac
+  command -v codex >/dev/null 2>&1 || return 0
+  IFS='|' read -r RC_CODEX_MODEL RC_CODEX_EFFORT RC_CODEX_USAGE <<EOF
+$(rc_codex_pick)
+EOF
+  export RC_CODEX_MODEL RC_CODEX_EFFORT RC_CODEX_USAGE
 }
 
 discover() {
@@ -130,9 +147,10 @@ write_status() {
 $SKIPPED
 EOF
   dead_json=""; for s in $dead; do dead_json="$dead_json${dead_json:+,}\"$s\""; done
-  printf '{"id":"%s","target":"%s","mode":"tribunal","state":"%s","pid":%s,"started":"%s","finished":"%s","cap":%s,"claude_model":"%s","claude_effort":"%s","seats":[%s],"skipped":{%s},"dead":[%s],"cells_total":%s,"cells_done":%s,"cells":[%s]}\n' \
+  printf '{"id":"%s","target":"%s","mode":"tribunal","state":"%s","pid":%s,"started":"%s","finished":"%s","cap":%s,"claude_model":"%s","claude_effort":"%s","codex_model":"%s","codex_effort":"%s","codex_usage":"%s","seats":[%s],"skipped":{%s},"dead":[%s],"cells_total":%s,"cells_done":%s,"cells":[%s]}\n' \
     "$(rc_json_str "$(rc_json_get "$RUN_DIR/run.json" id)")" "$(rc_json_str "$(rc_json_get "$RUN_DIR/run.json" target)")" \
     "$STATE" "$$" "$STARTED" "$FINISHED" "$CAP" "$RC_CLAUDE_MODEL" "$RC_CLAUDE_EFFORT" \
+    "${RC_CODEX_MODEL:-}" "${RC_CODEX_EFFORT:-}" "$(rc_json_str "${RC_CODEX_USAGE:-}")" \
     "$seats_json" "$skipped_json" "$dead_json" "$total" "$done_n" "$cells" >"$RUN_DIR/status.json.tmp"
   mv "$RUN_DIR/status.json.tmp" "$RUN_DIR/status.json"
 }
@@ -182,10 +200,11 @@ worker() {
   # RC_CAP_SECONDS pins the cap (tests, or an operator who knows better).
   case "${RC_CAP_SECONDS:-}" in ''|*[!0-9]*) ;; *) CAP=$RC_CAP_SECONDS ;; esac
   # shellcheck disable=SC2046
-  set -- $(rc_model_rule "$CHANGED")
+  set -- $(rc_model_rule tribunal)
   RC_CLAUDE_MODEL=${CLAUDE_MODEL_ARG:-$1}
   RC_CLAUDE_EFFORT=${CLAUDE_EFFORT_ARG:-$2}
   export RC_CLAUDE_MODEL RC_CLAUDE_EFFORT
+  pick_codex
   STARTED=$(now) FINISHED="" STATE=running SEATS="" SKIPPED=""
 
   while IFS='|' read -r s st detail; do
@@ -261,12 +280,14 @@ case "$CMD" in
     ;;
   start)
     need_run_dir
+    pick_codex
     # Fail loudly here, before anything is detached.
     if ! discover | grep -q '|available|'; then
       discover | sed 's/^/  /' >&2
       echo "run-tribunal.sh: zero seats available; nothing ran" >&2
       exit 3
     fi
+    [ -n "${RC_CODEX_MODEL:-}" ] && echo "codex-model|$RC_CODEX_MODEL|$RC_CODEX_EFFORT|$RC_CODEX_USAGE"
     args=""
     [ -n "$ONLY" ] && args="-s $(printf '%s' "$ONLY" | tr ' ' ',')"
     : >"$RUN_DIR/tribunal.log"
