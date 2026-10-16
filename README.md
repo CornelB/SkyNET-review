@@ -73,6 +73,8 @@ Targets: PR number or URL, or a branch. Nothing named: the current branch, that 
 
 `/review-council:status` lists every seat as available or disabled with the reason, and the Claude and codex models that apply now. `/review-council:result` lists runs newest first, prints a run's report (or the seat reports so far while a tribunal runs), or cancels a running tribunal.
 
+While a tribunal runs, a `REVIEW` band above the prompt shows how many lens/seat processes finished (`2 of 16`), a line that fills with them, the run's clock and the latest process to end. When the run ends the band says how many reports came back ok for 20 seconds. The band is a Claude Code mod (`mods/review-band/`, loaded through `hooks/hooks.json`); it reads the run's `status.json` once a second and draws nothing when no tribunal is live.
+
 ## Environment
 
 | Variable | Effect |
@@ -94,6 +96,7 @@ A run directory holds `run.json`, `diff.patch`, `pr-body.md` (PR), `scope.md`, `
 - `scripts/prepare-run.sh` - run directory, scope and prompt assembly. `scripts/pr-worktree.sh` - PR worktree.
 - `scripts/run-tribunal.sh` - seat discovery and the detached tribunal. `scripts/runs.sh` - run listing.
 - `scripts/seats/<seat>.sh` - one per seat; every CLI flag lives there.
+- `mods/review-band/` - the progress band above the prompt. `bun test` in that folder runs its tests.
 - `tests/` - bats suite with fake CLIs. `bats tests` and `shellcheck` run in CI on every push.
 
 ## Credits

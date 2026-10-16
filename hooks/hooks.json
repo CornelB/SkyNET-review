@@ -1,0 +1,5 @@
+{
+  "modules": [
+    "../mods/review-band/hooks/band.tsx"
+  ]
+}
