@@ -90,6 +90,7 @@ Read every valid report. Then:
 - Sources that disagree: report the disagreement with each side named. Do not pick silently.
 - Verdict lines of lenses and seats are advisory. The final verdict derives only from findings that survived verification: any surviving 🔴 → `fail`; any surviving 🟡 → `pass with concerns`; else `pass`.
 - Claude sources (the local lenses and the `claude-cli` seat) are the same model family as you. Their agreement counts as one voice and never settles a split on its own.
+- KISS is always on: drop any finding, from any lens or seat, whose fix adds machinery (a state, option, route, guard, retry, lock, layer, config or test) for scale or failures the repo's real load does not produce. When a smaller fix works, report that one.
 - Deduplicate, never pad. Drop nits no source tied to a concrete case.
 
 ## 6. Report

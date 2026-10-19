@@ -30,9 +30,12 @@ setup() {
     # The scope block comes after the lens text.
     [ "$(grep -n '^## Scope' "$f" | cut -d: -f1)" -gt "$(grep -n '^## Output contract' "$f" | cut -d: -f1)" ]
   done
-  # The simplicity lens carries the vendored Ponytail text and its attribution.
-  grep -q 'BEGIN vendored: Ponytail' "$d/prompts/simplicity.md"
-  grep -q 'Dietrich Gebert, MIT' "$d/prompts/simplicity.md"
+  # KISS is always on: every lens and seat gets the rule with its scope, and
+  # the simplicity lens never asks for more code.
+  for lens in simplicity functionality security maintainability; do
+    grep -q '^KISS: always on.' "$d/prompts/$lens.md"
+  done
+  grep -q 'Never ask for more code' "$d/prompts/simplicity.md"
 }
 
 @test "nothing named: the current branch against the default branch" {

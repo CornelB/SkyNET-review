@@ -8,7 +8,7 @@ In priority order. Each lens is one self-contained prompt in `prompts/lenses/`; 
 
 | Lens | What it judges |
 |------|----------------|
-| `simplicity` | The [Ponytail](https://github.com/DietrichGebert/ponytail) review: bug, risk, scale, missing test, speed, and what should not exist. |
+| `simplicity` | KISS: what the change can lose and still do its job. Dead code, yagni, hardening for load the repo does not have, wrappers, duplication. Never asks for more code. |
 | `functionality` | Grumpy, no benefit of the doubt: business logic, edge cases, requirements, every PR and commit claim marked VERIFIED / FALSE / UNPROVABLE, every symbol, package, flag and path shown to exist, tests that really fail. |
 | `security` | Read-only audit. Findings only above 80% confidence with a concrete attack path. |
 | `maintainability` | Readability, naming against the repo's own conventions, docs and comments that describe what the code does. |
@@ -101,7 +101,6 @@ A run directory holds `run.json`, `diff.patch`, `pr-body.md` (PR), `scope.md`, `
 
 ## Credits
 
-- The `simplicity` lens is `skills/ponytail-review/SKILL.md` from [Ponytail](https://github.com/DietrichGebert/ponytail) by Dietrich Gebert, MIT, vendored verbatim.
 - The engine and the `functionality` and `security` lenses grew out of the grumpy-review skill.
 - Shape (seat contract, discovery, status and result commands, synthesis calibration) inspired by [claude-council](https://github.com/hex/claude-council).
 

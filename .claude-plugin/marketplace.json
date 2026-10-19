@@ -10,7 +10,7 @@
       "name": "review-council",
       "source": "./",
       "description": "Four-lens code review (simplicity, functionality, security, maintainability), local or as a multi-harness tribunal.",
-      "version": "0.3.0"
+      "version": "0.4.0"
     }
   ]
 }

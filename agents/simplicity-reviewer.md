@@ -1,6 +1,6 @@
 ---
 name: simplicity-reviewer
-description: Lens "simplicity" of review-council. Reviews a change like a lazy senior dev (bug, risk, scale, missing test, speed, lean) using the Ponytail review method. Loads its instructions from the assembled lens prompt file the orchestrator names.
+description: Lens "simplicity" of review-council. KISS: finds what the change can lose and still do its job (dead code, yagni, hardening for load the repo does not have, wrappers, duplication), and never asks for more code. Loads its instructions from the assembled lens prompt file the orchestrator names.
 model: inherit
 color: green
 tools: ["Read", "Grep", "Glob", "Bash(git -C * log *)", "Bash(git -C * diff *)", "Bash(git -C * show *)", "Bash(git -C * blame *)"]
