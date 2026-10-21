@@ -67,6 +67,25 @@ runs() { "$HOST_BASH" "$SCRIPTS/runs.sh" "$@"; }
   grep -q '|ok|fable, medium, plan mode' "$d/reports/security.claude-cli.status"
 }
 
+@test "claude-cli: a 400 on the chosen model reruns the lens on opus xhigh" {
+  cat >"$FAKEBIN/claude" <<'EOF'
+#!/usr/bin/env bash
+[ "$1" = auth ] && exit 0
+cat >/dev/null
+case " $* " in
+  *" --model fable "*) echo 'API Error: 400 {"message":"must have data retention enabled"}'; exit 1 ;;
+esac
+printf 'Verdict: pass\nNot checked: nothing.\n'
+EOF
+  chmod +x "$FAKEBIN/claude"
+  d=$(prepared_run)
+  run tribunal run -s claude-cli "$d"
+  [ "$status" -eq 0 ]
+  grep -q '|ok|opus, xhigh (fable rejected: API Error 400), plan mode' "$d/reports/security.claude-cli.status"
+  head -n 1 "$d/reports/security.claude-cli.md" | grep -qx 'Verdict: pass'
+  grep -q 'retrying on opus xhigh' "$d/reports/security.claude-cli.log"
+}
+
 @test "an invalid report is did-not-report and names the dead seat" {
   fake_codex
   d=$(prepared_run)
