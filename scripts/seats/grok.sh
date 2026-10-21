@@ -16,6 +16,9 @@
 # no grok flag changes. The mask is named in the status line. Fails closed:
 # if masking does not make the no-op pass, the seat is skipped.
 #
+# A spent usage quota ("You've reached your free Grok Build usage limit")
+# skips the seat with that reason: four lenses would only fail on it.
+#
 # The launcher starts this seat's four lenses at once; the first one runs
 # the pre-flight under a lock and the others reuse its result.
 #
@@ -25,6 +28,7 @@ set -u
 SEAT=grok
 GROK_PREFLIGHT_SECS=45
 GROK_SANDBOX_ERR='sandbox profile resolve failed|could not enforce its deny list|bwrap'
+GROK_LIMIT_ERR='usage limit'
 GROK_MASK_DIRS=""
 
 # Every grok invocation goes through here. With GROK_MASK_DIRS empty it is
@@ -48,6 +52,10 @@ grok_preflight() {
     rc=$?
     cat "$pf_try" >>"$pf_err"
     [ "$rc" -eq 124 ] && { rm -f "$pf_try"; return 0; }
+    if grep -qi "$GROK_LIMIT_ERR" "$pf_try"; then
+      GATE_REASON="usage limit reached: $(grep -m1 -i "$GROK_LIMIT_ERR" "$pf_try" | head -c 160)"
+      rm -f "$pf_try"; return 1
+    fi
     if [ "$rc" -eq 0 ] && ! grep -qiE "$GROK_SANDBOX_ERR" "$pf_try" 2>/dev/null; then
       [ -n "$GROK_MASK_DIRS" ] && echo "== ok with $GROK_MASK_DIRS masked ==" >>"$pf_err"
       rm -f "$pf_try"; return 0

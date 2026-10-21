@@ -86,6 +86,21 @@ EOF
   grep -q 'retrying on opus xhigh' "$d/reports/security.claude-cli.log"
 }
 
+@test "grok: a spent usage quota skips the seat at pre-flight" {
+  cat >"$FAKEBIN/grok" <<'EOF'
+#!/usr/bin/env bash
+echo "start" >>"$FAKE_LOG"
+echo "Error: You've reached your free Grok Build usage limit for now." >&2
+exit 1
+EOF
+  chmod +x "$FAKEBIN/grok"
+  d=$(prepared_run)
+  run tribunal run -s grok "$d"
+  [ "$status" -eq 0 ]
+  grep -q '^security|grok|skipped|usage limit reached' "$d/reports/security.grok.status"
+  [ "$(grep -c start "$FAKE_LOG")" -eq 1 ]
+}
+
 @test "an invalid report is did-not-report and names the dead seat" {
   fake_codex
   d=$(prepared_run)
