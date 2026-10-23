@@ -33,7 +33,7 @@
 #       orchestrator applied (default Fable high: the weekly Fable usage
 #       that downgrades it is measured by the session, not here)
 #   The codex seat's model and effort follow rc_codex_rule (lib/common.sh),
-#   from the weekly Codex usage that lib/codex-usage.py reads.
+#   from the weekly Codex usage that lib/codex-usage.py reads (ai-usage skill, then codex).
 #   RC_CAP_SECONDS  pins the per-process cap instead of sizing it
 #
 # MATRIX

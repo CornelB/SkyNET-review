@@ -58,6 +58,16 @@ runs() { "$HOST_BASH" "$SCRIPTS/runs.sh" "$@"; }
   grep -q '|ok|gpt-6.1-sol, xhigh, week 76% (snapshot)' "$d/reports/security.codex.status"
 }
 
+@test "codex: an installed ai-usage skill wins over the codex read" {
+  fake_codex
+  d=$(prepared_run)
+  mkdir -p "$HOME/.agents/skills/ai-usage/scripts"
+  printf '%s\n' 'print("[{\"provider\": \"codex\", \"source\": \"oauth\", \"windows\": [{\"name\": \"week\", \"used_percent\": 70.2, \"window_minutes\": 10080, \"resets_at\": \"2099-01-01T00:00:00Z\"}]}]")' \
+    >"$HOME/.agents/skills/ai-usage/scripts/ai_usage.py"
+  FAKE_CODEX_WEEK=10 run tribunal run -s codex "$d"
+  grep -q '|ok|gpt-6.1-sol, xhigh, week 71% (ai-usage)' "$d/reports/security.codex.status"
+}
+
 @test "-m and -e reach the claude-cli seat" {
   fake_claude
   d=$(prepared_run)
