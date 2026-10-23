@@ -3,8 +3,9 @@
 
 Output, one line: <percent used, rounded up>|<source>
 Sources, in order:
-  ai-usage  the ai-usage skill (`scripts/ai_usage.py --provider codex --json`, reads codexbar),
-            when the skill is installed under ~/.agents/skills, ~/.claude/skills or $CODEX_HOME/skills.
+  ai-usage  the usage skill (`scripts/ai_usage.py --provider codex --json`, reads codexbar):
+            the skynet plugin's `skills/usage` (install path from ~/.claude/plugins/installed_plugins.json),
+            else an old ai-usage skill under ~/.agents/skills, ~/.claude/skills or $CODEX_HOME/skills.
   live      `codex app-server`, JSON-RPC `account/rateLimits/read`. No model turn.
   snapshot  the last `rate_limits` event in the newest rollouts under
             $CODEX_HOME/sessions. Written on each Codex turn, so it can be old.
@@ -32,10 +33,23 @@ def codex_home():
     return Path(os.environ.get("CODEX_HOME") or Path.home() / ".codex")
 
 
+def skynet_usage_script():
+    try:
+        installed = json.loads((Path.home() / ".claude" / "plugins" / "installed_plugins.json").read_text())
+    except (OSError, ValueError):
+        return None
+    for key, installs in (installed.get("plugins") or {}).items():
+        for install in installs if key.startswith("skynet@") else []:
+            script = Path(install.get("installPath") or "") / "skills" / "usage" / "scripts" / "ai_usage.py"
+            if script.is_file():
+                return script
+    return None
+
+
 def read_ai_usage():
     skill = Path("ai-usage") / "scripts" / "ai_usage.py"
     roots = (Path.home() / ".agents" / "skills", Path.home() / ".claude" / "skills", codex_home() / "skills")
-    script = next((r / skill for r in roots if (r / skill).is_file()), None)
+    script = skynet_usage_script() or next((r / skill for r in roots if (r / skill).is_file()), None)
     if not script:
         raise RuntimeError("ai-usage skill not installed")
     out = subprocess.run([sys.executable, str(script), "--provider", "codex", "--json"], capture_output=True,

@@ -68,6 +68,19 @@ runs() { "$HOST_BASH" "$SCRIPTS/runs.sh" "$@"; }
   grep -q '|ok|gpt-6.1-sol, xhigh, week 71% (ai-usage)' "$d/reports/security.codex.status"
 }
 
+@test "codex: the skynet plugin's usage skill wins over an old ai-usage skill" {
+  fake_codex
+  d=$(prepared_run)
+  root="$HOME/.claude/plugins/cache/local/skynet/0.1.0"
+  mkdir -p "$root/skills/usage/scripts" "$HOME/.agents/skills/ai-usage/scripts"
+  printf '{"version": 2, "plugins": {"skynet@local": [{"installPath": "%s"}]}}\n' "$root" >"$HOME/.claude/plugins/installed_plugins.json"
+  printf '%s\n' 'print("[{\"provider\": \"codex\", \"source\": \"oauth\", \"windows\": [{\"name\": \"week\", \"used_percent\": 80.1, \"window_minutes\": 10080, \"resets_at\": \"2099-01-01T00:00:00Z\"}]}]")' \
+    >"$root/skills/usage/scripts/ai_usage.py"
+  printf '%s\n' 'print("[]")' >"$HOME/.agents/skills/ai-usage/scripts/ai_usage.py"
+  FAKE_CODEX_WEEK=10 run tribunal run -s codex "$d"
+  grep -q '|ok|gpt-6.1-sol, xhigh, week 81% (ai-usage)' "$d/reports/security.codex.status"
+}
+
 @test "-m and -e reach the claude-cli seat" {
   fake_claude
   d=$(prepared_run)
