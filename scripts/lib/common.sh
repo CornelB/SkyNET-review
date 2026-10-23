@@ -58,9 +58,10 @@ rc_codex_pick() {
     pct=${u%%|*}
     note="week ${pct}% ($(printf '%s' "$u" | cut -d'|' -f2))"
   fi
-  # shellcheck disable=SC2046
-  set -- $(rc_codex_rule "$pct")
-  echo "$1|$2|$note"
+  # No word splitting: callers run this inside `IFS='|' read <<EOF`, and
+  # bash 3.2 applies that IFS while the here-doc expands.
+  r=$(rc_codex_rule "$pct")
+  echo "${r% *}|${r#* }|$note"
 }
 
 # Escape a value for a JSON string body.
