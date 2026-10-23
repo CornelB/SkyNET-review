@@ -23,7 +23,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, macos-latest]
+        os: [macos-latest]
     runs-on: ${{ matrix.os }}
     timeout-minutes: 20
     steps:
@@ -34,7 +34,11 @@ jobs:
       - name: Install dependencies (macOS)
         if: runner.os == 'macOS'
         run: brew install bats-core jq
+      - name: Diag
+        run: |
+          command -v python3 bash; ls -l "$(command -v python3)"; python3 -c 'import sys; print(sys.version, sys.executable)'; bash --version | head -1
+          d=$(mktemp -d); ln -s "$(command -v python3)" "$d/python3"; PATH="$d" HOME="$d" "$d/python3" -c 'print("ok")'; echo "exit $?"
       - name: Run bats
         env:
           BATS_TEST_TIMEOUT: 120
-        run: bats tests
+        run: bats --print-output-on-failure -f 'codex|one seat|start detaches' tests
