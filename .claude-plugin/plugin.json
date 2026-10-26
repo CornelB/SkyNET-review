@@ -1,6 +1,6 @@
 {
   "name": "review-council",
-  "version": "0.4.2",
+  "version": "0.4.3",
   "description": "Review a PR or a branch through four lenses (simplicity, functionality, security, maintainability), with fresh-context local subagents or a tribunal of external AI coding harnesses (codex, antigravity, grok, claude, kimi, cursor, local ollama), and get one verified, deduplicated report.",
   "author": {
     "name": "CornelB",
