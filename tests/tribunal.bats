@@ -31,7 +31,7 @@ runs() { "$HOST_BASH" "$SCRIPTS/runs.sh" "$@"; }
   grep -q '"seats":\["codex"\]' "$d/status.json"
   grep -q '"grok":"grok not on PATH"' "$d/status.json"
   grep -q '"dead":\[\]' "$d/status.json"
-  grep -q '"claude_model":"fable","claude_effort":"high","codex_model":"gpt-6-astra","codex_effort":"low"' "$d/status.json"
+  grep -q '"claude_model":"fable","claude_effort":"medium","codex_model":"gpt-6-astra","codex_effort":"low"' "$d/status.json"
 }
 
 @test "codex: Astra low up to 60% weekly usage, Sol xhigh above" {

@@ -20,12 +20,12 @@ lib() { . "$SCRIPTS/lib/common.sh"; "$@"; }
   run lib rc_cap_for_lines 900000; [ "$output" = 1800 ]
 }
 
-@test "claude rule: Fable low local, Fable high tribunal, Opus xhigh above 80%" {
+@test "claude rule: Fable low local, Fable medium tribunal, Opus xhigh above 80%" {
   run lib rc_model_rule local;          [ "$output" = "fable low" ]
   run lib rc_model_rule local 80;       [ "$output" = "fable low" ]
   run lib rc_model_rule local 81;       [ "$output" = "opus xhigh" ]
-  run lib rc_model_rule tribunal;       [ "$output" = "fable high" ]
-  run lib rc_model_rule tribunal 80;    [ "$output" = "fable high" ]
+  run lib rc_model_rule tribunal;       [ "$output" = "fable medium" ]
+  run lib rc_model_rule tribunal 80;    [ "$output" = "fable medium" ]
   run lib rc_model_rule tribunal 93;    [ "$output" = "opus xhigh" ]
 }
 

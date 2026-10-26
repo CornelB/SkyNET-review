@@ -2,7 +2,7 @@
 # claude-cli seat: a blind headless Claude Code session. Contract: lib/seat.sh.
 # Model and effort follow the Claude model rule for the tribunal; the launcher
 # passes the values it applied in RC_CLAUDE_MODEL and RC_CLAUDE_EFFORT
-# (default fable, high).
+# (default fable, medium).
 #
 # A model the account cannot use answers "API Error: 400" at once (Fable
 # without data retention). The lens then reruns on opus xhigh, the model
@@ -12,7 +12,7 @@ set -u
 SEAT=claude-cli
 
 model() { m=${RC_CLAUDE_MODEL:-fable}; case "$m" in *[!a-z0-9.-]*|"") m=fable;; esac; echo "$m"; }
-effort() { e=${RC_CLAUDE_EFFORT:-high}; case "$e" in low|medium|high|xhigh|max) ;; *) e=high;; esac; echo "$e"; }
+effort() { e=${RC_CLAUDE_EFFORT:-medium}; case "$e" in low|medium|high|xhigh|max) ;; *) e=medium;; esac; echo "$e"; }
 
 seat_gate() {
   command -v claude >/dev/null 2>&1 || { GATE_REASON="claude not on PATH"; return 1; }

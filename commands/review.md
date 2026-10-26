@@ -37,7 +37,7 @@ Claude models (the local lenses, and the `claude-cli` seat in tribunal mode):
 | Mode | Model | Effort |
 |------|-------|--------|
 | local | `fable` | `low` |
-| tribunal | `fable` | `high` |
+| tribunal | `fable` | `medium` |
 
 Load `mcp__ccd_session_mgmt__get_usage` with ToolSearch and call it. If it reports the "Weekly · Fable" usage above 80%, use `opus` with `xhigh` instead, and tell the operator now, before anything launches, in one line: `Fable weekly usage at <N>% (> 80%): Claude runs on Opus xhigh.` Record the downgrade for the report header. When the tool does not exist (terminal `claude`, `claude -p`), use `fable`.
 

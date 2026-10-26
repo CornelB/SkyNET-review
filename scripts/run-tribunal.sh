@@ -30,7 +30,7 @@
 #
 #   -s  restrict to these seats (comma-separated; default all available)
 #   -m  claude-cli model, -e claude-cli effort: the Claude model rule the
-#       orchestrator applied (default Fable high: the weekly Fable usage
+#       orchestrator applied (default Fable medium: the weekly Fable usage
 #       that downgrades it is measured by the session, not here)
 #   The codex seat's model and effort follow rc_codex_rule (lib/common.sh),
 #   from the weekly Codex usage that lib/codex-usage.py reads (ai-usage skill, then codex).

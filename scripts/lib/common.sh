@@ -28,14 +28,14 @@ rc_cap_for_lines() { # $1=changed lines
 }
 
 # Claude model rule: "<model> <effort>". Fable, low for the local lenses and
-# high for the tribunal's claude-cli seat; Opus xhigh once the weekly Fable
+# medium for the tribunal's claude-cli seat; Opus xhigh once the weekly Fable
 # usage is above 80%. Unknown usage keeps Fable.
 rc_model_rule() { # $1=local|tribunal $2=weekly Fable % used (may be empty)
   case "${2:-}" in
     ''|*[!0-9]*) ;;
     *) [ "$2" -gt 80 ] && { echo "opus xhigh"; return; } ;;
   esac
-  if [ "$1" = tribunal ]; then echo "fable high"; else echo "fable low"; fi
+  if [ "$1" = tribunal ]; then echo "fable medium"; else echo "fable low"; fi
 }
 
 # OpenAI model rule for the codex seat: "<model> <effort>". Astra at low

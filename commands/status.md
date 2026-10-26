@@ -24,7 +24,7 @@ The codex line already shows the codex rule applied to the weekly Codex usage: G
 2. Claude model rule right now. Load `mcp__ccd_session_mgmt__get_usage` with ToolSearch and call it. Then print:
 
 ```
-Claude model: local -> Fable low; tribunal claude-cli -> Fable high
+Claude model: local -> Fable low; tribunal claude-cli -> Fable medium
 Fable weekly usage: <N>% -> <Fable | downgraded to Opus xhigh (> 80%)>
 ```
 

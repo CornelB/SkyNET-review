@@ -39,7 +39,7 @@ Exclusive. The operator picks one per run.
 
 **local** (default): one subagent per lens, launched in parallel, in the background, with only its lens prompt and the scope block. No session transcript, no conversation context.
 
-Model rules. Claude runs on Fable: effort low for the local lenses, effort high for the tribunal's `claude-cli` seat. Both drop to Opus xhigh when the desktop app's `get_usage` tool reports the "Weekly · Fable" usage above 80%; the downgrade is announced before launch and recorded in the report header. Without that tool (terminal `claude`, `claude -p`), Fable. `--effort=` overrides the effort, never the model.
+Model rules. Claude runs on Fable: effort low for the local lenses, effort medium for the tribunal's `claude-cli` seat. Both drop to Opus xhigh when the desktop app's `get_usage` tool reports the "Weekly · Fable" usage above 80%; the downgrade is announced before launch and recorded in the report header. Without that tool (terminal `claude`, `claude -p`), Fable. `--effort=` overrides the effort, never the model.
 
 The `codex` seat runs GPT-6 Astra (`gpt-6-astra`) at effort low, and GPT-6.1 Sol (`gpt-6.1-sol`) at xhigh when the weekly Codex usage is above 60%. `scripts/lib/codex-usage.py` reads that usage from the usage skill of the `skynet` plugin, or an older `ai-usage` skill, when one is installed (codexbar), else from `codex app-server` (`account/rateLimits/read`, no model turn), or from the last `rate_limits` event in the Codex session files when the live read fails. Unknown usage keeps Astra. The launcher applies the rule once per run and prints it before the tribunal starts.
 
