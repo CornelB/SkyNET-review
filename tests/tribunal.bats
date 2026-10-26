@@ -212,3 +212,45 @@ EOF
   [ "$status" -eq 1 ]
   [[ "$output" == *"no run with id review-nope"* ]]
 }
+
+# A fake ollama whose `show` reports a trained context of 131072 and, when
+# FAKE_NUM_CTX is set, that num_ctx parameter.
+fake_ollama_show() {
+  cat >"$FAKEBIN/ollama" <<'EOS'
+#!/usr/bin/env bash
+[ "${1:-}" = show ] || exit 0
+printf '  Model\n    context length      131072\n\n'
+[ -n "${FAKE_NUM_CTX:-}" ] && printf '  Parameters\n    num_ctx        %s\n' "$FAKE_NUM_CTX"
+exit 0
+EOS
+  chmod +x "$FAKEBIN/ollama"
+}
+
+@test "codex-oss is skipped when the diff exceeds the model context" {
+  fake_codex; fake_ollama_show
+  d=$(prepared_run)
+  bytes=$(wc -c <"$d/diff.patch" | tr -cd '0-9')
+  small=$(( (bytes + 3) / 4 - 1 ))
+  OLLAMA_REVIEWER_MODEL=m FAKE_NUM_CTX=$small run tribunal run -s codex-oss "$d"
+  [ "$status" -eq 3 ]
+  [[ "$output" == *"codex-oss|diff ~$((small + 1)) tokens exceeds m context of $small"* ]]
+  [ ! -s "$FAKE_LOG" ]
+  OLLAMA_REVIEWER_MODEL=m FAKE_NUM_CTX=$((small + 1)) run tribunal run -s codex-oss "$d"
+  [ "$status" -eq 0 ]
+  [ "$(grep -c 'start oss' "$FAKE_LOG")" -eq 4 ]
+}
+
+@test "codex-oss context: 4096 without num_ctx, capped at the trained length" {
+  fake_codex; fake_ollama_show
+  d=$(prepared_run)
+  head -c 20000 /dev/zero | tr '\0' x >>"$d/diff.patch"
+  OLLAMA_REVIEWER_MODEL=m run tribunal start -s codex-oss "$d"
+  [ "$status" -eq 3 ]
+  [[ "$output" == *"exceeds m context of 4096"* ]]
+  OLLAMA_REVIEWER_MODEL=m OLLAMA_CONTEXT_LENGTH=1000 run tribunal start -s codex-oss "$d"
+  [[ "$output" == *"exceeds m context of 1000"* ]]
+  head -c 600000 /dev/zero | tr '\0' x >>"$d/diff.patch"
+  OLLAMA_REVIEWER_MODEL=m FAKE_NUM_CTX=999999 run tribunal start -s codex-oss "$d"
+  [ "$status" -eq 3 ]
+  [[ "$output" == *"exceeds m context of 131072"* ]]
+}

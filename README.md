@@ -34,7 +34,7 @@ Harnesses only, each in its own read-only or plan sandbox, with no approval bypa
 | `claude-cli` | `claude` on PATH and logged in. Fable medium; Opus xhigh when the weekly Fable usage is above 80% |
 | `kimi-cli` | `kimi` and `jq` on PATH |
 | `cursor-cli` | `cursor-agent` on PATH |
-| `codex-oss` | `codex` and `ollama` on PATH and `OLLAMA_REVIEWER_MODEL` set; its four runs go one at a time |
+| `codex-oss` | `codex` and `ollama` on PATH and `OLLAMA_REVIEWER_MODEL` set, and the diff fits the model's context; its four runs go one at a time |
 
 Wall-clock cap per process: 600 s up to 2000 changed lines, 1200 s up to 6000, 1800 s beyond. A timeout that was still producing output gets one retry at twice the cap, once per seat.
 

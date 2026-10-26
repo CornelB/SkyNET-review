@@ -59,7 +59,7 @@ All seats are harnesses that read the tree in the worktree under their read-only
 | claude-cli | `claude` on PATH, seated like any other | `claude -p --permission-mode plan --setting-sources "" --no-session-persistence`, read-only tools only; model and effort follow the Claude rule for the tribunal |
 | kimi-cli | `kimi` on PATH | headless, read-only |
 | cursor-cli | `cursor-agent` on PATH | headless, read-only |
-| codex-oss | `codex` AND `ollama` on PATH AND `OLLAMA_REVIEWER_MODEL` set; otherwise `disabled (reason)` | `codex exec --oss --local-provider ollama -m $OLLAMA_REVIEWER_MODEL -s read-only` |
+| codex-oss | `codex` AND `ollama` on PATH AND `OLLAMA_REVIEWER_MODEL` set AND the diff (about 4 bytes per token) fits the context ollama serves the model with (`num_ctx`, else `OLLAMA_CONTEXT_LENGTH`, else 4096, at most the trained length); otherwise `disabled (reason)` | `codex exec --oss --local-provider ollama -m $OLLAMA_REVIEWER_MODEL -s read-only` |
 
 Uniform seat contract, one script per seat under `scripts/seats/<seat>.sh`: `-w <worktree> -p <prompt-file> -o <report-file> -t <seconds>`; report on the file; stdout one `seat|status|detail` line (`ok`, `skipped|<reason>`, `timeout|<bytes>`, `did-not-report|<reason>`); every CLI flag lives in the script. The launcher validates each report (non-empty, verdict on line 1, no rejected-invocation text) before counting it.
 

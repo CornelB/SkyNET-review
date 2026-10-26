@@ -115,6 +115,8 @@ need_run_dir() {
   [ -n "$RUN_DIR" ] || die "need <run-dir>"
   [ -f "$RUN_DIR/run.json" ] || die "not a run directory (no run.json): $RUN_DIR"
   RUN_DIR=$(cd "$RUN_DIR" && pwd -P)
+  # Seats whose model has a context limit gate on the diff size.
+  RC_DIFF_FILE=$(rc_json_get "$RUN_DIR/run.json" diff); export RC_DIFF_FILE
 }
 
 now() { date -u +%Y-%m-%dT%H:%M:%SZ; }

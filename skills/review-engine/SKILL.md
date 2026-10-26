@@ -70,7 +70,7 @@ All seats are harnesses that read the tree in the worktree under their read-only
 | claude-cli | `claude` on PATH and authenticated | `claude -p --permission-mode plan --setting-sources "" --safe-mode --no-session-persistence --tools Read,Grep,Glob`, Claude rule above |
 | kimi-cli | `kimi` and `jq` on PATH | `kimi -p --agent-file scripts/seats/kimi-agent.md` (read tools only) |
 | cursor-cli | `cursor-agent` on PATH | `cursor-agent -p --mode ask --trust` |
-| codex-oss | `codex` and `ollama` on PATH and `OLLAMA_REVIEWER_MODEL` set | `codex exec --oss --local-provider ollama -m $OLLAMA_REVIEWER_MODEL -s read-only` |
+| codex-oss | `codex` and `ollama` on PATH and `OLLAMA_REVIEWER_MODEL` set and the diff (about 4 bytes per token) fits the context ollama serves the model with (`num_ctx`, else `OLLAMA_CONTEXT_LENGTH`, else 4096, at most the trained length) | `codex exec --oss --local-provider ollama -m $OLLAMA_REVIEWER_MODEL -s read-only` |
 
 Seat contract: `<seat>.sh -w <worktree> -p <prompt-file> -o <report-file> -t <seconds>`; report on the file, log beside it; stdout one `seat|status|detail` line: `ok`, `skipped|<reason>`, `timeout|<bytes>`, `did-not-report|<reason>`. `<seat>.sh -c` is discovery only.
 
