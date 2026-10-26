@@ -23,7 +23,8 @@
 # the pre-flight under a lock and the others reuse its result.
 #
 # `max` effort is rejected ("use one of: xhigh, high, medium, low") and the
-# rejection exits 0 onto stdout; the launcher's validation screens for it.
+# rejection exits 0 onto stdout; it lands in the stream file, the report
+# stays empty and the launcher's validation calls the cell did-not-report.
 set -u
 SEAT=grok
 GROK_PREFLIGHT_SECS=45
@@ -96,6 +97,7 @@ grok_preflight_once() {
 
 seat_gate() {
   command -v grok >/dev/null 2>&1 || { GATE_REASON="grok not on PATH"; return 1; }
+  command -v jq >/dev/null 2>&1 || { GATE_REASON="jq not on PATH (needed to read grok's stream)"; return 1; }
   # Discovery (-c) has no run directory: the pre-flight belongs to a run.
   [ "$CHECK" -eq 1 ] && return 0
   grok_preflight_once
@@ -106,7 +108,15 @@ seat_describe() {
 }
 
 seat_invoke() {
-  grok_exec --sandbox read-only --effort xhigh -p "$PROMPT" >"$OUT" 2>"$LOG"
+  # Plain and json output both join the text of every turn without a
+  # separator, so the progress lines between tool calls glue onto the
+  # verdict line. The result event of the message stream carries only the
+  # final message.
+  raw="${OUT%.md}.stream.jsonl"
+  grok_exec --sandbox read-only --effort xhigh --output-format streaming-messages-json \
+    -p "$PROMPT" >"$raw" 2>"$LOG" || return $?
+  jq -rnR '[ inputs | fromjson? | select(type == "object" and .type == "result") | .result // empty ]
+    | last // empty' "$raw" >"$OUT" 2>>"$LOG"
 }
 
 # shellcheck source=../lib/seat.sh

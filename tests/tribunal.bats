@@ -124,6 +124,23 @@ EOF
   [ "$(grep -c start "$FAKE_LOG")" -eq 1 ]
 }
 
+@test "grok: the report is the final message, not the progress lines before it" {
+  cat >"$FAKEBIN/grok" <<'EOF'
+#!/usr/bin/env bash
+printf '%s\n' \
+  '{"type":"system","subtype":"init"}' \
+  '{"type":"assistant","message":{"content":[{"type":"text","text":"I will read the diff."},{"type":"tool_use","name":"read_file"}]}}' \
+  '{"type":"assistant","message":{"content":[{"type":"text","text":"Verdict: pass\nNot checked: nothing."}]}}' \
+  '{"type":"result","subtype":"success","result":"Verdict: pass\nNot checked: nothing."}'
+EOF
+  chmod +x "$FAKEBIN/grok"
+  d=$(prepared_run)
+  run tribunal run -s grok "$d"
+  [ "$status" -eq 0 ]
+  grep -q '^security|grok|ok|' "$d/reports/security.grok.status"
+  [ "$(head -n 1 "$d/reports/security.grok.md")" = "Verdict: pass" ]
+}
+
 @test "an invalid report is did-not-report and names the dead seat" {
   fake_codex
   d=$(prepared_run)
