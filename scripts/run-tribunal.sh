@@ -225,11 +225,7 @@ EOF
     exit 3
   fi
 
-  echo "$$" >"$RUN_DIR/tribunal.pid"
-  rm -f "$RUN_DIR/.cancelled" "$RUN_DIR"/reports/*.status
-  rm -rf "$RUN_DIR"/reports/.retry-*
-  write_status
-
+  # Catch cancel before the pid is published, or an early TERM skips the cancelled status.
   PIDS=""
   on_term() {
     : >"$RUN_DIR/.cancelled"
@@ -239,6 +235,11 @@ EOF
     exit 130
   }
   trap on_term TERM INT
+
+  echo "$$" >"$RUN_DIR/tribunal.pid"
+  rm -f "$RUN_DIR/.cancelled" "$RUN_DIR"/reports/*.status
+  rm -rf "$RUN_DIR"/reports/.retry-*
+  write_status
 
   for seat in $SEATS; do
     if [ "$seat" = codex-oss ]; then
