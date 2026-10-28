@@ -41,7 +41,7 @@ Wall-clock cap per process: 600 s up to 2000 changed lines, 1200 s up to 6000, 1
 ## Install
 
 ```
-/plugin marketplace add CornelB/AI-review-council
+/plugin marketplace add CornelB/SkyNET-review
 ```
 ```
 /plugin install review-board@cornelb-plugins
