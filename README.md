@@ -1,4 +1,4 @@
-# review-council
+# review-board
 
 One command that judges a change from four angles and returns one report. It runs locally with fresh-context Claude subagents, or as a tribunal of external AI coding harnesses that read the tree. Reports only: it changes no code, posts no comments, creates no branches and writes nothing inside the repository.
 
@@ -44,34 +44,34 @@ Wall-clock cap per process: 600 s up to 2000 changed lines, 1200 s up to 6000, 1
 /plugin marketplace add CornelB/AI-review-council
 ```
 ```
-/plugin install review-council@cornelb-plugins
+/plugin install review-board@cornelb-plugins
 ```
 
 A tribunal spans turns. For a prompt-free run add once to `~/.claude/settings.json` `permissions.allow`:
 
 ```
-"Bash(bash */review-council/scripts/prepare-run.sh *)",
-"Bash(bash */review-council/scripts/run-tribunal.sh *)",
-"Bash(bash */review-council/scripts/runs.sh *)"
+"Bash(bash */review-board/scripts/prepare-run.sh *)",
+"Bash(bash */review-board/scripts/run-tribunal.sh *)",
+"Bash(bash */review-board/scripts/runs.sh *)"
 ```
 
 ## Use
 
 ```
-/review-council:review 123
-/review-council:review https://github.com/owner/repo/pull/123 --tribunal
-/review-council:review
-/review-council:review feature/branch --tribunal
-/review-council:review feature/branch --effort=high
-/review-council:status
-/review-council:result
-/review-council:result review-pr-123-20261015-101500
-/review-council:result cancel review-pr-123-20261015-101500
+/review-board:review 123
+/review-board:review https://github.com/owner/repo/pull/123 --tribunal
+/review-board:review
+/review-board:review feature/branch --tribunal
+/review-board:review feature/branch --effort=high
+/review-board:status
+/review-board:result
+/review-board:result review-pr-123-20261015-101500
+/review-board:result cancel review-pr-123-20261015-101500
 ```
 
 Targets: PR number or URL, or a branch. Nothing named: the current branch, that is, the commits on it that the default branch does not have. Uncommitted changes are never in scope. A PR is reviewed in a detached worktree pinned to the PR head OID, with an explicit `<merge-base>..<head>` range, and the worktree is removed at the end.
 
-`/review-council:status` lists every seat as available or disabled with the reason, and the Claude and codex models that apply now. `/review-council:result` lists runs newest first, prints a run's report (or the seat reports so far while a tribunal runs), or cancels a running tribunal.
+`/review-board:status` lists every seat as available or disabled with the reason, and the Claude and codex models that apply now. `/review-board:result` lists runs newest first, prints a run's report (or the seat reports so far while a tribunal runs), or cancels a running tribunal.
 
 While a tribunal runs, a `REVIEW` band above the prompt shows how many lens/seat processes finished (`2 of 16`), a line that fills with them, the run's clock and the latest process to end. When the run ends the band says how many reports came back ok for 20 seconds. The band is a Claude Code mod (`mods/review-band/`, loaded through `hooks/hooks.json`); it reads the run's `status.json` once a second and draws nothing when no tribunal is live.
 
@@ -81,8 +81,8 @@ While a tribunal runs, a `REVIEW` band above the prompt shows how many lens/seat
 |----------|--------|
 | `OLLAMA_REVIEWER_MODEL` | Enables the `codex-oss` seat with this local ollama model. |
 | `CURSOR_CLI_MODEL`, `KIMI_CLI_MODEL` | Model for those seats; unset uses the CLI's default. |
-| `CLAUDE_SCRATCHPAD`, `TMPDIR` | Parent of the default run directory, `<dir>/review-council/review-<target>-<ts>/`. |
-| `XDG_STATE_HOME` | Where the run index lives (`review-council/runs.txt`, default `~/.local/state`). |
+| `CLAUDE_SCRATCHPAD`, `TMPDIR` | Parent of the default run directory, `<dir>/review-board/review-<target>-<ts>/`. |
+| `XDG_STATE_HOME` | Where the run index lives (`review-board/runs.txt`, default `~/.local/state`). |
 | `RC_CAP_SECONDS` | Pins the per-process cap instead of sizing it from the diff. |
 
 A run directory holds `run.json`, `diff.patch`, `pr-body.md` (PR), `scope.md`, `prompts/<lens>.md`, `reports/<lens>.<seat>.md` with `.log` and `.status`, `status.json` and `report.md`.

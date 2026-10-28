@@ -1,13 +1,13 @@
 {
   "name": "cornelb-plugins",
-  "description": "CornelB plugins: review-council, a parallel council of code reviewers for AI-authored changes.",
+  "description": "CornelB plugins: review-board, a parallel board of code reviewers for AI-authored changes.",
   "owner": {
     "name": "CornelB",
     "url": "https://github.com/CornelB"
   },
   "plugins": [
     {
-      "name": "review-council",
+      "name": "review-board",
       "source": "./",
       "description": "Four-lens code review (simplicity, functionality, security, maintainability), local or as a multi-harness tribunal.",
       "version": "0.4.3"

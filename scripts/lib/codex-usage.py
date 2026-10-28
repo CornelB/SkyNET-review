@@ -74,7 +74,7 @@ def read_live():
     threading.Thread(target=lambda: [lines.put(line) for line in proc.stdout], daemon=True).start()
     try:
         for msg in ({"jsonrpc": "2.0", "id": 1, "method": "initialize",
-                     "params": {"clientInfo": {"name": "review-council", "version": "1"}}},
+                     "params": {"clientInfo": {"name": "review-board", "version": "1"}}},
                     {"jsonrpc": "2.0", "method": "initialized"},
                     {"jsonrpc": "2.0", "id": 2, "method": "account/rateLimits/read"}):
             proc.stdin.write(json.dumps(msg) + "\n")

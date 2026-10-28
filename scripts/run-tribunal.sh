@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# run-tribunal.sh: launcher for review-council's tribunal mode. Every
+# run-tribunal.sh: launcher for review-board's tribunal mode. Every
 # available seat runs every lens prompt in the run's worktree: 4 x N
 # processes, blind to each other.
 #

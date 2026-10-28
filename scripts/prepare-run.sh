@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# prepare-run.sh: create a review-council run directory, materialize the
+# prepare-run.sh: create a review-board run directory, materialize the
 # scope under review, and assemble one prompt file per lens.
 #
 # USAGE
@@ -7,7 +7,7 @@
 #     target: PR number or URL | <branch>
 #             nothing: the current branch, that is, the commits on it that
 #             the default branch does not have
-#     -d    parent of review-council/ (default $CLAUDE_SCRATCHPAD, $TMPDIR, /tmp)
+#     -d    parent of review-board/ (default $CLAUDE_SCRATCHPAD, $TMPDIR, /tmp)
 #     -M    mode recorded in status.json (default local)
 #   Prints ONE JSON line on stdout (also saved as <run-dir>/run.json):
 #     {"id","run_dir","target","kind","mode","repo","worktree","in_place",
@@ -108,7 +108,7 @@ physical() { # $1=path that may not exist yet
   while [ ! -d "$d" ]; do rest="/$(basename "$d")$rest"; d=$(dirname "$d"); done
   echo "$(cd "$d" && pwd -P)$rest"
 }
-RUNS=$(physical "${ROOT%/}/review-council")
+RUNS=$(physical "${ROOT%/}/review-board")
 case "$RUNS/" in "$REPO"/*) die "run dir is inside the repository: $RUNS";; esac
 mkdir -p "$RUNS" || die "cannot create $RUNS"
 # mkdir is atomic: a second run in the same second takes the next suffix

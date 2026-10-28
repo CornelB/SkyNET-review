@@ -1,7 +1,7 @@
 import { describe, expect, test } from 'bun:test'
 import { abandonedNotice, band, finishNotice, latestEvent, parseStatus, tribunalRunDir } from '../hooks/progress'
 
-const DIR = '/tmp/x/review-council/review-pr-508-20261016-182522'
+const DIR = '/tmp/x/review-board/review-pr-508-20261016-182522'
 
 describe('tribunalRunDir', () => {
   test('follows start and wait', () => {

@@ -1,4 +1,4 @@
-# review-council design
+# review-board design
 
 Agreed design. Implementation follows this document; where code and this document disagree, fix one and say which.
 
@@ -86,15 +86,15 @@ Terse: `file:L<line> | severity | problem. fix.`. Security findings and architec
 
 ## Runs and results
 
-Run directory: `<scratchpad or $TMPDIR>/review-council/review-<target>-<ts>/`. Holds the worktree (PR mode), `diff.patch`, `pr-body.md`, one prompt file per lens, one report file per (lens, seat), each seat's `.log`, `status.json`, and `report.md`.
+Run directory: `<scratchpad or $TMPDIR>/review-board/review-<target>-<ts>/`. Holds the worktree (PR mode), `diff.patch`, `pr-body.md`, one prompt file per lens, one report file per (lens, seat), each seat's `.log`, `status.json`, and `report.md`.
 
 A tribunal is launched as a background process so the session stays usable and a usage-limit hit mid-run loses nothing already written. The orchestrator is notified when it ends.
 
 ## Commands
 
-- `/review-council:review [PR number|PR URL|branch] [--tribunal] [--effort=]`
-- `/review-council:status`: one line per seat, `available (model, sandbox)` or `disabled (reason)`, plus the Claude and codex models that would apply right now. Read-only.
-- `/review-council:result [list | <id> | cancel <id>]`: list runs newest first (id, target, mode, state, seats done/total); print a run's `report.md`, or the seat reports so far while it runs; cancel a running tribunal.
+- `/review-board:review [PR number|PR URL|branch] [--tribunal] [--effort=]`
+- `/review-board:status`: one line per seat, `available (model, sandbox)` or `disabled (reason)`, plus the Claude and codex models that would apply right now. Read-only.
+- `/review-board:result [list | <id> | cancel <id>]`: list runs newest first (id, target, mode, state, seats done/total); print a run's `report.md`, or the seat reports so far while it runs; cancel a running tribunal.
 
 ## Repository rules
 

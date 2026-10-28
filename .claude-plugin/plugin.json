@@ -1,5 +1,5 @@
 {
-  "name": "review-council",
+  "name": "review-board",
   "version": "0.4.3",
   "description": "Review a PR or a branch through four lenses (simplicity, functionality, security, maintainability), with fresh-context local subagents or a tribunal of external AI coding harnesses (codex, antigravity, grok, claude, kimi, cursor, local ollama), and get one verified, deduplicated report.",
   "author": {
@@ -12,7 +12,7 @@
   "keywords": [
     "code-review",
     "review",
-    "council",
+    "board",
     "tribunal",
     "lenses",
     "simplicity",

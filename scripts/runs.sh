@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
-# runs.sh: list, show and cancel review-council runs, for /review-council:result.
+# runs.sh: list, show and cancel review-board runs, for /review-board:result.
 #
 # USAGE
 #   runs.sh list
 #     One line per run, newest first:
 #       <id>|<target>|<mode>|<state>|<done>/<total>|<run-dir>
-#     Runs come from the run index ($XDG_STATE_HOME/review-council/runs.txt,
+#     Runs come from the run index ($XDG_STATE_HOME/review-board/runs.txt,
 #     default ~/.local/state/...) plus every run directory under the default
 #     root; missing directories are skipped.
 #   runs.sh show <run-id|run-dir>

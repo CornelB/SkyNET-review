@@ -1,16 +1,16 @@
 ---
 name: review-engine
-description: Internal engine for /review-council:review. Hard constraints, run directory layout, the scripts that build the scope and run the tribunal, the seat contract and the seat setup. Loaded by the review command; not meant to be invoked directly.
+description: Internal engine for /review-board:review. Hard constraints, run directory layout, the scripts that build the scope and run the tribunal, the seat contract and the seat setup. Loaded by the review command; not meant to be invoked directly.
 allowed-tools:
-  - Bash(bash */review-council/scripts/prepare-run.sh *)
-  - Bash(bash */review-council/scripts/run-tribunal.sh *)
-  - Bash(bash */review-council/scripts/runs.sh *)
+  - Bash(bash */review-board/scripts/prepare-run.sh *)
+  - Bash(bash */review-board/scripts/run-tribunal.sh *)
+  - Bash(bash */review-board/scripts/runs.sh *)
   - Read
   - Grep
   - Glob
 ---
 
-# review-council engine
+# review-board engine
 
 Four lenses judge one change: simplicity, functionality, security, maintainability, in that priority order. A run is either **local** (one fresh-context Claude subagent per lens) or **tribunal** (every available external harness runs every lens prompt in the worktree). Never both. In both modes the orchestrating Claude only synthesizes.
 
@@ -31,12 +31,12 @@ Four lenses judge one change: simplicity, functionality, security, maintainabili
 | `scripts/prepare-run.sh` | `prepare [target]`: creates the run directory, materializes the scope (PR through `pr-worktree.sh`), writes `diff.patch`, `scope.md`, `prompts/<lens>.md`, `run.json`, `status.json`; prints `run.json`. `cleanup <run-dir>`: removes the PR worktree. |
 | `scripts/pr-worktree.sh` | PR only, called by `prepare-run.sh`: detached worktree pinned to the PR head OID (never `FETCH_HEAD`), wrong-repo guard, explicit merge-base, `gh pr diff` with a `git diff` fallback. |
 | `scripts/run-tribunal.sh` | `discover`, `start`, `run`, `wait`, `cancel`. Discovers seats, builds the 4 x N matrix, runs it detached, validates reports, writes `status.json`. |
-| `scripts/runs.sh` | `list`, `show`, `cancel` for `/review-council:result`. |
+| `scripts/runs.sh` | `list`, `show`, `cancel` for `/review-board:result`. |
 | `scripts/seats/<seat>.sh` | One per seat; every CLI flag lives here. |
 
 ## Run directory
 
-`<scratchpad or $TMPDIR>/review-council/review-<target>-<ts>/`:
+`<scratchpad or $TMPDIR>/review-board/review-<target>-<ts>/`:
 
 - `run.json`: target, kind, worktree, range, base, merge-base, head, diff source, claims, changed lines.
 - `diff.patch`, `pr-body.md` (PR mode), `scope.md`, `prompts/<lens>.md` (lens prompt + scope block).
@@ -44,7 +44,7 @@ Four lenses judge one change: simplicity, functionality, security, maintainabili
 - `reports/<lens>.<seat>.md`, `.log`, `.status` (tribunal); `reports/<lens>.local.md` (local).
 - `status.json`, `tribunal.log`, `tribunal.pid` while running, and `report.md`.
 
-Every run directory is appended to `$XDG_STATE_HOME/review-council/runs.txt` (default `~/.local/state/...`) so `/review-council:result` finds runs from any session.
+Every run directory is appended to `$XDG_STATE_HOME/review-board/runs.txt` (default `~/.local/state/...`) so `/review-board:result` finds runs from any session.
 
 ## Lenses
 
@@ -89,7 +89,7 @@ On Linux hosts where grok's read-only profile cannot stat the container runtime 
 The command's `allowed-tools` cover its own turn. A tribunal spans turns, so add once to `~/.claude/settings.json` `permissions.allow`:
 
 ```
-"Bash(bash */review-council/scripts/prepare-run.sh *)",
-"Bash(bash */review-council/scripts/run-tribunal.sh *)",
-"Bash(bash */review-council/scripts/runs.sh *)"
+"Bash(bash */review-board/scripts/prepare-run.sh *)",
+"Bash(bash */review-board/scripts/run-tribunal.sh *)",
+"Bash(bash */review-board/scripts/runs.sh *)"
 ```

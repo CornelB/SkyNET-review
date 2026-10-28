@@ -1,7 +1,7 @@
 ---
-description: Show which review-council tribunal seats are available or disabled (and why), and which Claude and codex models apply right now. Read-only.
+description: Show which review-board tribunal seats are available or disabled (and why), and which Claude and codex models apply right now. Read-only.
 argument-hint: ""
-allowed-tools: ToolSearch, mcp__ccd_session_mgmt__get_usage, Bash(bash */review-council/scripts/run-tribunal.sh discover*)
+allowed-tools: ToolSearch, mcp__ccd_session_mgmt__get_usage, Bash(bash */review-board/scripts/run-tribunal.sh discover*)
 ---
 
 Read-only. Change nothing, launch nothing.

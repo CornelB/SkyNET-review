@@ -131,11 +131,11 @@ rc_validate_report() { # $1=report $2=log
 # Default root for run directories.
 rc_runs_root() {
   r=${CLAUDE_SCRATCHPAD:-${TMPDIR:-/tmp}}
-  echo "${r%/}/review-council"
+  echo "${r%/}/review-board"
 }
 
 # Index of every run directory ever prepared, newest last. Lets
-# /review-council:result find runs made from other sessions or --run-dir.
+# /review-board:result find runs made from other sessions or --run-dir.
 rc_index_file() {
-  echo "${XDG_STATE_HOME:-$HOME/.local/state}/review-council/runs.txt"
+  echo "${XDG_STATE_HOME:-$HOME/.local/state}/review-board/runs.txt"
 }

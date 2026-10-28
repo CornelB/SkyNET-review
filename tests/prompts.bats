@@ -73,7 +73,7 @@ setup() {
   run prep prepare
   [ "$status" -eq 1 ]
   [[ "$output" == *"nothing committed on feature that main does not have"* ]]
-  [ -z "$(ls "$SCRATCH_REAL/review-council")" ]
+  [ -z "$(ls "$SCRATCH_REAL/review-board")" ]
 }
 
 @test "working-tree targets no longer exist" {
@@ -90,9 +90,9 @@ setup() {
   run prep -M tribunal prepare
   d=$(field run_dir)
   [[ "$(basename "$d")" == review-feature-* ]]
-  [ "$d" = "$SCRATCH_REAL/review-council/$(basename "$d")" ]
+  [ "$d" = "$SCRATCH_REAL/review-board/$(basename "$d")" ]
   grep -q '"mode":"tribunal","state":"prepared"' "$d/status.json"
-  grep -qx "$d" "$XDG_STATE_HOME/review-council/runs.txt"
+  grep -qx "$d" "$XDG_STATE_HOME/review-board/runs.txt"
 }
 
 @test "a runs root inside the repository is refused" {
@@ -124,5 +124,5 @@ setup() {
   run prep -d "$BATS_TEST_TMPDIR/link" prepare
   [ "$status" -eq 1 ]
   [[ "$output" == *"inside the repository"* ]]
-  [ ! -e "$REPO/review-council" ]
+  [ ! -e "$REPO/review-board" ]
 }

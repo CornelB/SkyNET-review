@@ -1,10 +1,10 @@
 ---
 description: Review a PR or a branch through four lenses (simplicity, functionality, security, maintainability), either with fresh-context local subagents or with an external tribunal of AI coding harnesses, and synthesize one report.
 argument-hint: "[PR number|PR URL|branch] [--tribunal] [--effort=]"
-allowed-tools: Agent, Read, Grep, Glob, Write, ToolSearch, mcp__ccd_session_mgmt__get_usage, Bash(bash */review-council/scripts/prepare-run.sh *), Bash(bash */review-council/scripts/run-tribunal.sh *), Bash(git -C * log *), Bash(git -C * show *), Bash(git -C * diff *), Bash(git -C * blame *)
+allowed-tools: Agent, Read, Grep, Glob, Write, ToolSearch, mcp__ccd_session_mgmt__get_usage, Bash(bash */review-board/scripts/prepare-run.sh *), Bash(bash */review-board/scripts/run-tribunal.sh *), Bash(git -C * log *), Bash(git -C * show *), Bash(git -C * diff *), Bash(git -C * blame *)
 ---
 
-Run review-council on `$ARGUMENTS`. This is a review report, not a review process: change no code, post no comments, create no branches, write nothing inside the repository under review.
+Run review-board on `$ARGUMENTS`. This is a review report, not a review process: change no code, post no comments, create no branches, write nothing inside the repository under review.
 
 The `review-engine` skill holds the hard constraints, the run directory layout, the scripts and the seat details. Follow it. This file says what to run and how to synthesize.
 
@@ -55,10 +55,10 @@ Prompt file: <run_dir>/prompts/<lens>.md
 
 | Lens | subagent_type |
 |------|---------------|
-| simplicity | `review-council:simplicity-reviewer` |
-| functionality | `review-council:functionality-reviewer` |
-| security | `review-council:security-reviewer` |
-| maintainability | `review-council:maintainability-reviewer` |
+| simplicity | `review-board:simplicity-reviewer` |
+| functionality | `review-board:functionality-reviewer` |
+| security | `review-board:security-reviewer` |
+| maintainability | `review-board:maintainability-reviewer` |
 
 Wait for all four notifications. Save each reply verbatim with Write to `<run_dir>/reports/<lens>.local.md`. A reply whose first non-empty line is not `Verdict:` is invalid: record it in the header as a dead lens and do not use its findings.
 
@@ -77,7 +77,7 @@ bash ${CLAUDE_PLUGIN_ROOT}/scripts/run-tribunal.sh start -m <model> -e <effort> 
 bash ${CLAUDE_PLUGIN_ROOT}/scripts/run-tribunal.sh wait <run_dir>
 ```
 
-Tell the operator in one line that the tribunal runs in the background, its run id, and that `/review-council:result <id>` shows progress. End your turn. When the notification arrives, continue with step 5.
+Tell the operator in one line that the tribunal runs in the background, its run id, and that `/review-board:result <id>` shows progress. End your turn. When the notification arrives, continue with step 5.
 
 The wait output has `state|<state>` and one `<lens>|<seat>|<status>|<detail>` line per process. Only `ok` reports feed synthesis; never synthesize from an empty or invalid report. Every seat that ended `timeout`, `did-not-report` or `skipped` goes in the header with its reason. The lens subagents do not run in tribunal mode.
 
@@ -112,4 +112,4 @@ Terse. No preamble, no closing summary.
 bash ${CLAUDE_PLUGIN_ROOT}/scripts/prepare-run.sh cleanup <run_dir>
 ```
 
-It removes the PR worktree; the run directory with its reports and `report.md` stays for `/review-council:result`.
+It removes the PR worktree; the run directory with its reports and `report.md` stays for `/review-board:result`.

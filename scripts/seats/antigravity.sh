@@ -27,7 +27,7 @@
 # the slug. Candidates are tried in order because a listed model can still be
 # unavailable to the account; each such failure is immediate. The slug that
 # last produced a valid report is cached in
-# $XDG_CACHE_HOME/review-council/agy-model and tried first.
+# $XDG_CACHE_HOME/review-board/agy-model and tried first.
 set -u
 SEAT=antigravity
 
@@ -35,7 +35,7 @@ AGY_SETTINGS="$HOME/.gemini/antigravity-cli/settings.json"
 AGY_ALLOWS='read_file(*)'
 AGY_FALLBACK="gemini-3.7-flash-high gemini-3.1-pro-high"
 AGY_MODEL_ERR='invalid model selection|not recognized as a known model|not supported in the selected location|required the "command" permission'
-AGY_MODEL_CACHE="${XDG_CACHE_HOME:-$HOME/.cache}/review-council/agy-model"
+AGY_MODEL_CACHE="${XDG_CACHE_HOME:-$HOME/.cache}/review-board/agy-model"
 AGY_NOSHELL="HARD CONSTRAINT: you have NO shell access. Every shell command is auto-denied and one attempt ends your run with no report. Read the diff file and every source file ONLY with your native file-reading tool, and ONLY by the absolute paths given in this prompt: a relative path does not resolve without a shell. If you cannot read a file, say so; reporting a value you did not read is a failed review."
 NL='
 '
