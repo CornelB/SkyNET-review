@@ -10,7 +10,7 @@
       "name": "review-board",
       "source": "./",
       "description": "Four-lens code review (simplicity, functionality, security, maintainability), local or as a multi-harness tribunal.",
-      "version": "0.4.3"
+      "version": "0.5.0"
     }
   ]
 }
