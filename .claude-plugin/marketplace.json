@@ -1,6 +1,6 @@
 {
-  "name": "cornelb-plugins",
-  "description": "CornelB plugins: review-board, a parallel board of code reviewers for AI-authored changes.",
+  "name": "review-board-local",
+  "description": "Local marketplace for the review-board plugin.",
   "owner": {
     "name": "CornelB",
     "url": "https://github.com/CornelB"

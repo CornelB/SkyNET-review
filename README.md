@@ -38,14 +38,14 @@ Harnesses only, each in its own read-only or plan sandbox, with no approval bypa
 
 Wall-clock cap per process: 600 s up to 2000 changed lines, 1200 s up to 6000, 1800 s beyond. A timeout that was still producing output gets one retry at twice the cap, once per seat.
 
-## Install
+## Install (local)
 
+```bash
+claude plugin marketplace add /path/to/SkyNET-review
+claude plugin install review-board@review-board-local
 ```
-/plugin marketplace add CornelB/SkyNET-review
-```
-```
-/plugin install review-board@cornelb-plugins
-```
+
+From GitHub it installs through [SkyNET-marketplace](https://github.com/CornelB/SkyNET-marketplace) as `SkyNET-review@SkyNET-marketplace`.
 
 A tribunal spans turns. For a prompt-free run add once to `~/.claude/settings.json` `permissions.allow`:
 
