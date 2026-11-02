@@ -36,9 +36,16 @@ seat_gate() {
 
 seat_describe() { echo "ollama ${OLLAMA_REVIEWER_MODEL:-?}, read-only sandbox"; }
 
+# model_provider=ollama: --oss alone leaves the turn on the openai provider,
+# and codex 0.166 refuses it with modelProviderMismatch, even in an empty home.
+# CODEX_HOME: an empty home in the run directory, so the operator's codex
+# config, MCP servers, plugins, hooks, skills and AGENTS.md do not reach the
+# local model, which then calls tools that do not exist.
 seat_invoke() {
-  codex exec --oss --local-provider ollama -m "$OLLAMA_REVIEWER_MODEL" \
-    -s read-only --skip-git-repo-check -C "$WORKTREE" \
+  home="$(dirname "$OUTDIR")/codex-oss-home"
+  mkdir -p "$home" || return 1
+  CODEX_HOME="$home" codex exec --oss --local-provider ollama -c model_provider=ollama \
+    -m "$OLLAMA_REVIEWER_MODEL" -s read-only --skip-git-repo-check -C "$WORKTREE" \
     -o "$OUT" "$PROMPT" >"$LOG" 2>&1
 }
 
