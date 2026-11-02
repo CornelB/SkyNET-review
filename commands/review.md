@@ -20,10 +20,10 @@ Shell discipline: every Bash command below is literal. Substitute the values, bu
 
 ## 2. Prepare the run
 
-One command. `-d` is this session's scratchpad directory when you have one (omit `-d` otherwise); `-M` is `local` or `tribunal`; the target last, or nothing:
+One command. `-C` is the path of the repository under review, always: the Bash working directory can be outside it; `-d` is this session's scratchpad directory when you have one (omit `-d` otherwise); `-M` is `local` or `tribunal`; the target last, or nothing:
 
 ```
-bash ${CLAUDE_PLUGIN_ROOT}/scripts/prepare-run.sh -d <scratchpad> -M <mode> prepare <target>
+bash ${CLAUDE_PLUGIN_ROOT}/scripts/prepare-run.sh -C <repo> -d <scratchpad> -M <mode> prepare <target>
 ```
 
 It prints one JSON line: `id`, `run_dir`, `kind`, `worktree`, `in_place`, `range`, `base`, `merge_base`, `head`, `diff`, `diff_source`, `claims`, `changed_lines`, `pr`. Use these values; recompute none of them. A nonzero exit means the scope could not be built: show the stderr line and stop.
