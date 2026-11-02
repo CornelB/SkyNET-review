@@ -81,6 +81,18 @@ runs() { "$HOST_BASH" "$SCRIPTS/runs.sh" "$@"; }
   grep -q '|ok|gpt-6.1-sol, xhigh, week 81% (ai-usage)' "$d/reports/security.codex.status"
 }
 
+@test "codex: the usage skill is found under the GitHub marketplace plugin name" {
+  fake_codex
+  d=$(prepared_run)
+  root="$HOME/.claude/plugins/cache/SkyNET-marketplace/SkyNET-agents/0.7.0"
+  mkdir -p "$root/skills/usage/scripts"
+  printf '{"version": 2, "plugins": {"SkyNET-agents@SkyNET-marketplace": [{"installPath": "%s"}]}}\n' "$root" >"$HOME/.claude/plugins/installed_plugins.json"
+  printf '%s\n' 'print("[{\"provider\": \"codex\", \"source\": \"oauth\", \"windows\": [{\"name\": \"week\", \"used_percent\": 80.1, \"window_minutes\": 10080, \"resets_at\": \"2099-01-01T00:00:00Z\"}]}]")' \
+    >"$root/skills/usage/scripts/ai_usage.py"
+  FAKE_CODEX_WEEK=10 run tribunal run -s codex "$d"
+  grep -q '|ok|gpt-6.1-sol, xhigh, week 81% (ai-usage)' "$d/reports/security.codex.status"
+}
+
 @test "-m and -e reach the claude-cli seat" {
   fake_claude
   d=$(prepared_run)

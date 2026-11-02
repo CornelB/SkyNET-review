@@ -39,7 +39,8 @@ def skynet_usage_script():
     except (OSError, ValueError):
         return None
     for key, installs in (installed.get("plugins") or {}).items():
-        for install in installs if key.startswith("skynet@") else []:
+        # skynet@<local marketplace>, or SkyNET-agents@<GitHub marketplace>.
+        for install in installs if key.split("@")[0] in ("skynet", "SkyNET-agents") else []:
             script = Path(install.get("installPath") or "") / "skills" / "usage" / "scripts" / "ai_usage.py"
             if script.is_file():
                 return script
