@@ -49,19 +49,21 @@ rc_codex_rule() { # $1=weekly Codex % used (may be empty)
   echo "gpt-6-astra low"
 }
 
-# Reads the weekly Codex usage and applies the rule once:
-# "<model>|<effort>|<usage note>".
+# Reads the Codex usage and applies the rule once:
+# "<model>|<effort>|<usage note>|<full>". <full> is empty, or the window that
+# is full (5h >= 90% or week >= 95%), and then the codex seat does not run.
 rc_codex_pick() {
-  pct="" note="week usage unknown"
+  pct="" note="week usage unknown" full=""
   if command -v python3 >/dev/null 2>&1 \
      && u=$(python3 "$(dirname "${BASH_SOURCE[0]}")/codex-usage.py" 2>/dev/null); then
     pct=${u%%|*}
     note="week ${pct}% ($(printf '%s' "$u" | cut -d'|' -f2))"
+    full=$(printf '%s' "$u" | cut -d'|' -f3)
   fi
   # No word splitting: callers run this inside `IFS='|' read <<EOF`, and
   # bash 3.2 applies that IFS while the here-doc expands.
   r=$(rc_codex_rule "$pct")
-  echo "${r% *}|${r#* }|$note"
+  echo "${r% *}|${r#* }|$note|$full"
 }
 
 # Escape a value for a JSON string body.

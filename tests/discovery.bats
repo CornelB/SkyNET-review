@@ -51,6 +51,25 @@ discover() { "$HOST_BASH" "$SCRIPTS/run-tribunal.sh" discover "$@"; }
   [ "$output" = "codex|available|gpt-6-astra, low, week 12% (live), read-only sandbox" ]
 }
 
+@test "codex: a full 5h or weekly window disables the seat" {
+  fake_codex
+  FAKE_CODEX_5H=89 FAKE_CODEX_WEEK=94 run discover -s codex
+  [ "$output" = "codex|available|gpt-6.1-sol, xhigh, week 94% (live), read-only sandbox" ]
+  FAKE_CODEX_5H=90 FAKE_CODEX_WEEK=12 run discover -s codex
+  [ "$output" = "codex|disabled|codex usage full: 5h 90%, resets unknown" ]
+  FAKE_CODEX_WEEK=95 run discover -s codex
+  [ "$output" = "codex|disabled|codex usage full: week 95%, resets unknown" ]
+}
+
+@test "codex: a full 5h window from the usage skill disables the seat" {
+  fake_codex
+  mkdir -p "$HOME/.agents/skills/ai-usage/scripts"
+  printf '%s\n' 'print("[{\"provider\": \"codex\", \"source\": \"oauth\", \"windows\": [{\"name\": \"5h\", \"used_percent\": 100, \"window_minutes\": 300, \"resets_at\": \"2099-01-01T12:00:00Z\"}, {\"name\": \"week\", \"used_percent\": 40, \"window_minutes\": 10080, \"resets_at\": \"2099-01-05T00:00:00Z\"}]}]")' \
+    >"$HOME/.agents/skills/ai-usage/scripts/ai_usage.py"
+  TZ=UTC run discover -s codex
+  [ "$output" = "codex|disabled|codex usage full: 5h 100%, resets 12:00" ]
+}
+
 @test "claude-cli: unauthenticated claude is disabled" {
   printf '#!/usr/bin/env bash\nexit 1\n' >"$FAKEBIN/claude"; chmod +x "$FAKEBIN/claude"
   run discover -s claude-cli

@@ -1,7 +1,9 @@
 #!/usr/bin/env python3
-"""Print the weekly Codex usage for the codex seat's model rule.
+"""Print the weekly Codex usage for the codex seat's model rule, and whether Codex is full.
 
-Output, one line: <percent used, rounded up>|<source>
+Output, one line: <weekly percent used, rounded up>|<source>|<full>
+<full> is empty, or the first full window, for example `5h 100%, resets 22:35`.
+Full means the skynet usage rule: the 5h window at 90% or more, or the week at 95% or more.
 Sources, in order:
   ai-usage  the usage skill (`scripts/ai_usage.py --provider codex --json`, reads codexbar):
             the skynet plugin's `skills/usage` (install path from ~/.claude/plugins/installed_plugins.json),
@@ -27,6 +29,9 @@ from pathlib import Path
 LIVE_TIMEOUT_S = 10
 AI_USAGE_TIMEOUT_S = 30
 WEEK_MINS = 10080
+FIVE_HOUR_MINS = 300
+# The skynet usage rule: full at 5h >= 90% or week >= 95%.
+FULL_AT = {FIVE_HOUR_MINS: 90, WEEK_MINS: 95}
 
 
 def codex_home():
@@ -128,11 +133,19 @@ def main():
             windows = reader()
         except Exception:  # noqa: BLE001 - every failure falls through to the next source
             continue
+        week, full = None, ""
         for used, mins, resets_at in windows:
-            if mins != WEEK_MINS:
-                continue
             pct = 0 if resets_at is not None and resets_at <= now else math.ceil(float(used or 0))
-            print(f"{pct}|{name}")
+            if mins == WEEK_MINS:
+                week = pct
+            limit = FULL_AT.get(mins)
+            if not full and limit is not None and pct >= limit:
+                label = "5h" if mins == FIVE_HOUR_MINS else "week"
+                when = time.strftime("%H:%M" if mins == FIVE_HOUR_MINS else "%d %b %H:%M",
+                                     time.localtime(resets_at)) if resets_at else "unknown"
+                full = f"{label} {pct}%, resets {when}"
+        if week is not None:
+            print(f"{week}|{name}|{full}")
             return 0
     return 2
 

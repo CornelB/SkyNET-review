@@ -48,6 +48,16 @@ runs() { "$HOST_BASH" "$SCRIPTS/runs.sh" "$@"; }
   [ "$(sort -u "$FAKE_LOG.models")" = gpt-6.1-sol ]
 }
 
+@test "codex: full usage lists the seat as skipped and runs no codex cell" {
+  fake_codex; fake_plain grok
+  d=$(prepared_run)
+  FAKE_CODEX_5H=100 FAKE_CODEX_WEEK=12 run tribunal run -s codex,grok "$d"
+  [ "$status" -eq 0 ]
+  grep -q '"seats":\["grok"\]' "$d/status.json"
+  grep -q '"skipped":{"codex":"codex usage full: 5h 100%, resets unknown"}' "$d/status.json"
+  [ -z "$(ls "$d"/reports/*.codex.* 2>/dev/null)" ]
+}
+
 @test "codex: the last session snapshot stands in when the live read fails" {
   fake_codex
   d=$(prepared_run)

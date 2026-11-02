@@ -48,7 +48,8 @@ fake_plain() { # $1=name
 #   ok (default) | noverdict | sleep (streams to stderr, never finishes)
 # Each call logs "start <oss|cloud>" and "end <oss|cloud>" to $FAKE_LOG and
 # its -m model to $FAKE_LOG.models. `codex app-server` answers the rate-limit
-# read with a weekly usage of $FAKE_CODEX_WEEK %, or an error when unset.
+# read with a weekly usage of $FAKE_CODEX_WEEK % and a 5h usage of
+# ${FAKE_CODEX_5H:-10} %, or an error when FAKE_CODEX_WEEK is unset.
 fake_codex() {
   cat >"$FAKEBIN/codex" <<'EOF'
 #!/usr/bin/env bash
@@ -56,7 +57,7 @@ if [ "${1:-}" = app-server ]; then
   while IFS= read -r l; do
     case "$l" in *'"id": 2'*)
       if [ -n "${FAKE_CODEX_WEEK:-}" ]; then
-        printf '{"id":2,"result":{"rateLimits":{"primary":{"usedPercent":99,"windowDurationMins":300,"resetsAt":null},"secondary":{"usedPercent":%s,"windowDurationMins":10080,"resetsAt":null}}}}\n' "$FAKE_CODEX_WEEK"
+        printf '{"id":2,"result":{"rateLimits":{"primary":{"usedPercent":%s,"windowDurationMins":300,"resetsAt":null},"secondary":{"usedPercent":%s,"windowDurationMins":10080,"resetsAt":null}}}}\n' "${FAKE_CODEX_5H:-10}" "$FAKE_CODEX_WEEK"
       else
         printf '{"id":2,"error":{"message":"not signed in"}}\n'
       fi ;;

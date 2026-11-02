@@ -28,7 +28,7 @@ Harnesses only, each in its own read-only or plan sandbox, with no approval bypa
 
 | Seat | Available when |
 |------|----------------|
-| `codex` | `codex` on PATH. GPT-6 Astra low; GPT-6.1 Sol xhigh when the weekly Codex usage is above 60% |
+| `codex` | `codex` on PATH. GPT-6 Astra low; GPT-6.1 Sol xhigh when the weekly Codex usage is above 60%; disabled while the 5h usage is at 90% or the week at 95% |
 | `antigravity` | `agy` on PATH (merges a pinned `read_file(*)` allow-list into its settings on first use) |
 | `grok` | `grok` on PATH |
 | `claude-cli` | `claude` on PATH and logged in. Fable medium; Opus xhigh when the weekly Fable usage is above 80% |

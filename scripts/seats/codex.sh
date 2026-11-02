@@ -3,13 +3,14 @@
 # Model and effort follow the codex rule (rc_codex_rule): GPT-6 Astra at low
 # effort, GPT-6.1 Sol at xhigh once the weekly Codex usage is above 60%. The
 # launcher reads the usage once and passes what it applied in RC_CODEX_MODEL,
-# RC_CODEX_EFFORT and RC_CODEX_USAGE; without them the seat reads it itself.
+# RC_CODEX_EFFORT, RC_CODEX_USAGE and RC_CODEX_FULL; without them the seat
+# reads it itself. A full 5h or weekly window disables the seat.
 set -u
 SEAT=codex
 
 pick() {
   if [ -z "${RC_CODEX_MODEL:-}" ]; then
-    IFS='|' read -r RC_CODEX_MODEL RC_CODEX_EFFORT RC_CODEX_USAGE <<EOF
+    IFS='|' read -r RC_CODEX_MODEL RC_CODEX_EFFORT RC_CODEX_USAGE RC_CODEX_FULL <<EOF
 $(rc_codex_pick)
 EOF
   fi
@@ -20,6 +21,7 @@ EOF
 seat_gate() {
   command -v codex >/dev/null 2>&1 || { GATE_REASON="codex not on PATH"; return 1; }
   pick
+  [ -z "${RC_CODEX_FULL:-}" ] || { GATE_REASON="codex usage full: $RC_CODEX_FULL"; return 1; }
 }
 
 seat_describe() { echo "$RC_CODEX_MODEL, $RC_CODEX_EFFORT${RC_CODEX_USAGE:+, $RC_CODEX_USAGE}, read-only sandbox"; }

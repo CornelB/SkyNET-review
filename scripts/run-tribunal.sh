@@ -99,10 +99,10 @@ pick_codex() {
   [ -z "${RC_CODEX_MODEL:-}" ] || return 0
   case " $(requested_seats) " in *" codex "*) ;; *) return 0;; esac
   command -v codex >/dev/null 2>&1 || return 0
-  IFS='|' read -r RC_CODEX_MODEL RC_CODEX_EFFORT RC_CODEX_USAGE <<EOF
+  IFS='|' read -r RC_CODEX_MODEL RC_CODEX_EFFORT RC_CODEX_USAGE RC_CODEX_FULL <<EOF
 $(rc_codex_pick)
 EOF
-  export RC_CODEX_MODEL RC_CODEX_EFFORT RC_CODEX_USAGE
+  export RC_CODEX_MODEL RC_CODEX_EFFORT RC_CODEX_USAGE RC_CODEX_FULL
 }
 
 discover() {

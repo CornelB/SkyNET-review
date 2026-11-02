@@ -19,7 +19,7 @@ codex        available (gpt-6-astra, low, week 18% (live), read-only sandbox)
 kimi-cli     disabled (kimi not on PATH)
 ```
 
-The codex line already shows the codex rule applied to the weekly Codex usage: GPT-6 Astra low, or GPT-6.1 Sol xhigh above 60%.
+The codex line already shows the codex rule applied to the weekly Codex usage: GPT-6 Astra low, or GPT-6.1 Sol xhigh above 60%. A full 5h or weekly window shows as `codex disabled (codex usage full: 5h 100%, resets 22:35)`.
 
 2. Claude model rule right now. Load `mcp__ccd_session_mgmt__get_usage` with ToolSearch and call it. Then print:
 
