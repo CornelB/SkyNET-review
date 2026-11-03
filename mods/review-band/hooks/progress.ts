@@ -1,5 +1,5 @@
 // ABOUTME: Words for a tribunal run's band above the prompt
-// ABOUTME: Pure functions over the Bash command that starts or waits on a run, and the status.json it writes
+// ABOUTME: Pure functions over the Bash command that starts or waits on a run, the status.json it writes, and local lens subagents
 
 export type Cell = { lens: string; seat: string; status: string }
 export type RunStatus = { state: string; pid: number; started: string; total: number; done: number; cells: Cell[] }
@@ -43,6 +43,19 @@ export function parseStatus(text: string): RunStatus | undefined {
     done: typeof r.cells_done === 'number' ? r.cells_done : cells.filter(c => c.status !== 'running').length,
     cells,
   }
+}
+
+// The lens a local-mode subagent reviews for, from the agent type it was
+// spawned as (`review-board:security-reviewer`); undefined for any other agent.
+export function lensOf(subagentType: string): string | undefined {
+  return /^review-board:([a-z]+)-reviewer$/.exec(subagentType)?.[1]
+}
+
+// A local run as the band reads a tribunal's status.json: one cell per lens
+// subagent, seat `local`, live while any of them still runs.
+export function localStatus(cells: Cell[], started: string): RunStatus {
+  const done = cells.filter(c => c.status !== 'running').length
+  return { state: done < cells.length ? 'running' : 'done', pid: 0, started, total: cells.length, done, cells: cells.map(c => ({ ...c })) }
 }
 
 export function isLive(status: RunStatus): boolean {

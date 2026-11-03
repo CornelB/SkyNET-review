@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'bun:test'
-import { abandonedNotice, band, finishNotice, latestEvent, parseStatus, tribunalRunDir } from '../hooks/progress'
+import { abandonedNotice, band, finishNotice, latestEvent, lensOf, localStatus, parseStatus, tribunalRunDir } from '../hooks/progress'
 
 const DIR = '/tmp/x/review-board/review-pr-508-20261016-182522'
 
@@ -45,5 +45,21 @@ describe('status', () => {
     expect(finishNotice(parseStatus(status('done', ['ok', 'timeout']))!)).toEqual({ text: 'finished: 1 of 2 reports ok, 1 failed', isFailure: false })
     expect(finishNotice(parseStatus(status('cancelled', ['ok', 'running']))!).isFailure).toBe(true)
     expect(abandonedNotice(parseStatus(status('running', ['ok', 'running'])))).toBe('stopped before it finished: 1 of 2 done')
+  })
+})
+
+describe('local run', () => {
+  test('only the lens reviewers are followed', () => {
+    expect(lensOf('review-board:security-reviewer')).toBe('security')
+    expect(lensOf('general-purpose')).toBeUndefined()
+    expect(lensOf('other:security-reviewer')).toBeUndefined()
+  })
+  test('live while a lens runs, done once all have ended', () => {
+    const cells = [{ lens: 'simplicity', seat: 'local', status: 'ok' }, { lens: 'security', seat: 'local', status: 'running' }]
+    const live = localStatus(cells, '2026-10-16T15:25:22Z')
+    expect([live.state, live.done, live.total]).toEqual(['running', 1, 2])
+    cells[1]!.status = 'failed'
+    expect(live.cells[1]!.status).toBe('running')
+    expect(finishNotice(localStatus(cells, ''))).toEqual({ text: 'finished: 1 of 2 reports ok, 1 failed', isFailure: false })
   })
 })
