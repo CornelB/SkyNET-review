@@ -22,18 +22,21 @@
 # The merge is idempotent, keeps a backup, preserves every other key, and is
 # named in the status line. `antigravity.sh setup` runs it by hand.
 #
-# MODEL. Highest-ranked slug from `agy models`, flash family first (newest
-# version, high effort), pro only as the fallback floor. Effort is baked into
-# the slug. Candidates are tried in order because a listed model can still be
-# unavailable to the account; each such failure is immediate. The slug that
-# last produced a valid report is cached in
-# $XDG_CACHE_HOME/review-board/agy-model and tried first.
+# MODEL. Highest-ranked slug from `agy models`: argon first (high, then
+# medium; low is never used), then the flash family (newest version, high
+# effort), pro only as the fallback floor. Argon is not on every plan. Effort
+# is baked into the slug. Candidates are tried in order because a listed model
+# can still be unavailable to the account; each such failure is immediate. The
+# slug that last produced a valid report is cached in
+# $XDG_CACHE_HOME/review-board/agy-model together with the candidate list it
+# was picked from, and tried first only while that list is unchanged, so a
+# newly listed model gets its turn.
 set -u
 SEAT=antigravity
 
 AGY_SETTINGS="$HOME/.gemini/antigravity-cli/settings.json"
 AGY_ALLOWS='read_file(*)'
-AGY_FALLBACK="gemini-3.7-flash-high gemini-3.1-pro-high"
+AGY_FALLBACK="gemini-4-argon-high gemini-4-argon-medium gemini-3.8-flash-high gemini-3.1-pro-high"
 AGY_MODEL_ERR='invalid model selection|not recognized as a known model|not supported in the selected location|required the "command" permission'
 AGY_MODEL_CACHE="${XDG_CACHE_HOME:-$HOME/.cache}/review-board/agy-model"
 AGY_NOSHELL="HARD CONSTRAINT: you have NO shell access. Every shell command is auto-denied and one attempt ends your run with no report. Read the diff file and every source file ONLY with your native file-reading tool, and ONLY by the absolute paths given in this prompt: a relative path does not resolve without a shell. If you cannot read a file, say so; reporting a value you did not read is a failed review."
@@ -64,15 +67,17 @@ ensure_agy_config() {
   '
 }
 
-# Ordered model candidates: flash before pro, newer first, higher effort first.
+# Ordered model candidates: argon (high, medium) before flash before pro,
+# newer first, higher effort first.
 agy_candidates() {
   command -v perl >/dev/null 2>&1 || return 0
   agy models 2>/dev/null | perl -ne '
-    BEGIN { @m = (); %rank = (high => 0, medium => 1, low => 2) }
-    next unless /^(gemini-([0-9]+(?:\.[0-9]+)?)-(pro|flash)-(high|medium|low))\b/;
+    BEGIN { @m = (); %rank = (high => 0, medium => 1, low => 2); %tier = (argon => 0, flash => 1, pro => 2) }
+    next unless /^(gemini-([0-9]+(?:\.[0-9]+)?)-(argon|pro|flash)-(high|medium|low))\b/;
     my ($slug, $ver, $tier, $eff) = ($1, $2, $3, $4);
+    next if $tier eq "argon" && $eff eq "low";
     my @p = split /\./, $ver;
-    push @m, [ $tier eq "flash" ? 0 : 1, -($p[0] * 1000 + ($p[1] // 0)), $rank{$eff}, $slug ];
+    push @m, [ $tier{$tier}, -($p[0] * 1000 + ($p[1] // 0)), $rank{$eff}, $slug ];
     END {
       @m = sort { $a->[0] <=> $b->[0] || $a->[1] <=> $b->[1] || $a->[2] <=> $b->[2] } @m;
       print join(" ", map { $_->[3] } @m);
@@ -109,7 +114,7 @@ seat_gate() {
 
 seat_describe() {
   used=$(cat "${OUT%.md}.model" 2>/dev/null)
-  echo "${used:-best flash slug}, --sandbox, read_file only$AGY_STATE"
+  echo "${used:-best argon or flash slug}, --sandbox, read_file only$AGY_STATE"
 }
 
 # Walk the candidates past model-selection errors. Each attempt overwrites the
@@ -120,7 +125,12 @@ seat_invoke() {
   : >"$attempts"
   models=$(agy_candidates)
   [ -n "$models" ] || models=$AGY_FALLBACK
-  cached=""; [ -f "$AGY_MODEL_CACHE" ] && cached=$(tr -cd 'a-zA-Z0-9.-' <"$AGY_MODEL_CACHE")
+  all=$models
+  # Line 1: the slug; line 2: the candidate list it was picked from.
+  cached=""
+  if [ -f "$AGY_MODEL_CACHE" ] && [ "$(sed -n 2p "$AGY_MODEL_CACHE")" = "$models" ]; then
+    cached=$(sed -n 1p "$AGY_MODEL_CACHE" | tr -cd 'a-zA-Z0-9.-')
+  fi
   if [ -n "$cached" ]; then
     rest=""; for m in $models; do [ "$m" = "$cached" ] || rest="$rest $m"; done
     models="$cached$rest"
@@ -134,7 +144,7 @@ seat_invoke() {
     echo "$m" >"${OUT%.md}.model"
     # Cache only a slug that produced a valid report.
     if [ "$(rc_validate_report "$OUT" "$LOG" | cut -d'|' -f1)" = "ok" ]; then
-      mkdir -p "$(dirname "$AGY_MODEL_CACHE")" 2>/dev/null && echo "$m" >"$AGY_MODEL_CACHE"
+      mkdir -p "$(dirname "$AGY_MODEL_CACHE")" 2>/dev/null && printf '%s\n%s\n' "$m" "$all" >"$AGY_MODEL_CACHE"
     fi
     return 0
   done

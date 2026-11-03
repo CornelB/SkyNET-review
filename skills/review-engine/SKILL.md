@@ -65,7 +65,7 @@ All seats are harnesses that read the tree in the worktree under their read-only
 | Seat | Gate | Invocation |
 |------|------|------------|
 | codex | `codex` on PATH | `codex exec --skip-git-repo-check -s read-only`, model and effort from the codex rule |
-| antigravity | `agy` on PATH | `agy --sandbox`, no `--mode`, no shell; best flash slug from `agy models`, cached |
+| antigravity | `agy` on PATH | `agy --sandbox`, no `--mode`, no shell; Gemini 4 Argon high or medium from `agy models` when the plan has it, else best flash slug (high effort), cached |
 | grok | `grok` and `jq` on PATH | `grok --sandbox read-only --effort xhigh --output-format streaming-messages-json -p` (report = final message), Linux podman-socket mask when needed |
 | claude-cli | `claude` on PATH and authenticated | `claude -p --permission-mode plan --setting-sources "" --safe-mode --no-session-persistence --tools Read,Grep,Glob`, Claude rule above |
 | kimi-cli | `kimi` and `jq` on PATH | `kimi -p --agent-file scripts/seats/kimi-agent.md` (read tools only) |
