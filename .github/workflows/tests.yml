@@ -19,6 +19,17 @@ jobs:
       - name: Lint shell scripts
         run: git ls-files '*.sh' '*.bash' | xargs shellcheck
 
+  # The band's pure logic. The hooks module itself needs Claude Code's types,
+  # which CI does not have, so it is type-checked locally (see README).
+  review-band:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+      - name: Run band tests
+        working-directory: mods/review-band
+        run: bun test
+
   bats:
     strategy:
       fail-fast: false
