@@ -1,6 +1,6 @@
 # review-board
 
-One command that judges a change from four angles and returns one report. It runs locally with fresh-context Claude subagents, or as a tribunal of external AI coding harnesses that read the tree. Reports only: it changes no code, posts no comments, creates no branches and writes nothing inside the repository.
+One command that judges a change from four angles and returns one report. It runs locally with fresh-context Claude subagents, or as a tribunal of external AI coding harnesses that read the tree. Reports only: it changes no code, creates no branches and writes nothing inside the repository. It posts no comments unless you ask; then each 🔴 and 🟡 finding on a line of the PR's diff goes to the PR as an inline comment, and nothing else is posted.
 
 ## Lenses
 

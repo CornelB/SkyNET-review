@@ -16,7 +16,7 @@ Four lenses judge one change: simplicity, functionality, security, maintainabili
 
 ## Hard constraints
 
-- Reports only. Change no code, post no PR comments, create no branch, ref or checkout, rename or delete nothing, and write no file inside the repository under review.
+- Reports only. Change no code, post no PR comments (the one exception is step 8 of the review command: inline comments the operator asked for, posted by the orchestrator, never by a lens or seat), create no branch, ref or checkout, rename or delete nothing, and write no file inside the repository under review.
 - The only fetches: `git fetch origin pull/<N>/head` and `git fetch origin <base>`, both inside `scripts/pr-worktree.sh`.
 - Shell discipline keeps the run prompt-free: every repo operation goes through the scripts below, and every command is literal (no `cd &&` chains, pipes, redirections, loops, variables or `$(...)`). Read the diff, PR body, prompts, reports and logs with the Read, Grep and Glob tools.
 - Guards: hooks deny some commands, and a denied command costs the check. The scope block's `Guards:` line binds every lens, every seat, the orchestrator and any agent spawned to verify a finding: no environment-variable read or credential name (`process.env.*`, `os.environ`, `printenv`, `env`, `.env` files, tokens, keys) in a shell command, Grep pattern or Read path (find the line by a neighbouring identifier or its line number, then Read the range); no `rm`, no `sleep`, no force push, no pipe into an interpreter and no search pattern that spells one. A denial is final: never reword a command to get past a guard.

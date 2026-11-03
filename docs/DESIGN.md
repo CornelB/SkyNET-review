@@ -4,7 +4,7 @@ Agreed design. Implementation follows this document; where code and this documen
 
 ## Purpose
 
-One command that judges a change from four angles, either locally (fresh-context Claude subagents) or through external AI coding harnesses that read the tree. Reports only. It changes no code, posts no comments, creates no branches, writes nothing inside the repository.
+One command that judges a change from four angles, either locally (fresh-context Claude subagents) or through external AI coding harnesses that read the tree. Reports only. It changes no code, creates no branches, writes nothing inside the repository. It posts no comments unless the operator asks; then each 🔴 and 🟡 finding on a line of the PR's diff becomes one inline PR comment, and nothing outside the diff is posted.
 
 ## Terms
 
