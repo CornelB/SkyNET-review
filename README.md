@@ -96,8 +96,8 @@ A run directory holds `run.json`, `diff.patch`, `pr-body.md` (PR), `scope.md`, `
 - `scripts/prepare-run.sh` - run directory, scope and prompt assembly. `scripts/pr-worktree.sh` - PR worktree.
 - `scripts/run-tribunal.sh` - seat discovery and the detached tribunal. `scripts/runs.sh` - run listing.
 - `scripts/seats/<seat>.sh` - one per seat; every CLI flag lives there.
-- `mods/review-band/` - the progress band above the prompt. `bun test` in that folder runs its tests.
-- `tests/` - bats suite with fake CLIs. `bats tests` and `shellcheck` run in CI on every push.
+- `mods/review-band/` - the progress band above the prompt. `bun test` in that folder runs its tests. To type-check it, copy `types/claude-code.d.ts` from Claude Code's plugin-authoring skill (its path is printed when the skill loads) to `.claude/types/` at the repo root (gitignored), then run `bunx -p typescript tsc -p mods/review-band`.
+- `tests/` - bats suite with fake CLIs. `bats tests`, `shellcheck` and the band's `bun test` run in CI on every push.
 
 ## Credits
 

@@ -1,6 +1,8 @@
 .in_use
 .orphaned_at
 *.local.*
+# Claude Code's mod API types, copied in for type-checking mods/review-band
+.claude/types/
 
 ### Editor and OS garbage
 .idea
