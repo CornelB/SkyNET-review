@@ -1,7 +1,7 @@
 // ABOUTME: Hooks module that draws a live review run's progress in a band above the prompt
-// ABOUTME: Follows a tribunal's status.json, or the local lens subagents through their spawn and turn end
+// ABOUTME: Follows a tribunal's status.json (a row per seat, failed lenses with their error), or the local lens subagents
 import type { Elements, EngineInterface, Register, Timer } from 'claude-code'
-import { abandonedNotice, band, finishNotice, isLive, latestEvent, lensOf, localStatus, parseStatus, tribunalRunDir, type Cell, type RunStatus } from './progress'
+import { abandonedNotice, band, finishNotice, isLive, latestEvent, lensOf, localStatus, parseStatus, seatRows, tribunalRunDir, type Cell, type RunStatus } from './progress'
 
 const POLL_MS = 1000
 const PID_CHECK_MS = 5000
@@ -13,6 +13,12 @@ const FINISH_NOTICE_MS = 20_000
 // letters keep their contrast on light and dark alike (claude-council's values).
 const COLOR = { accent: 'claude', success: 'success', danger: 'error', warning: 'warning', onFill: 'white' } as const
 const FILL = { chip: 'rgb(180,85,50)', chipMark: 'rgb(150,68,40)' } as const
+// A seat row's mark: live, every lens reported, or a lens without a valid report.
+const GLYPH = {
+  running: { mark: '●', color: COLOR.warning },
+  ok: { mark: '✓', color: COLOR.success },
+  failed: { mark: '✗', color: COLOR.danger },
+} as const
 
 // A tribunal is followed by its run dir; a local run has no files, only its
 // lens subagents, keyed by agent id.
@@ -168,19 +174,39 @@ export const register: Register = on => {
       )
     }
     const shown = band(status, run.sinceMs, state.nowMs, run.event)
+    const rows = seatRows(status, run.sinceMs, state.nowMs)
+    const seatWidth = Math.max(0, ...rows.map(r => r.seat.length))
+    const modelWidth = Math.max(0, ...rows.map(r => r.model.length))
     return (
-      <ui.Box key="progress" flexDirection="row" marginTop={1}>
-        {chip(ui)}
-        <ui.Box flexShrink={0}>
-          <ui.Text>
-            <ui.Text bold>{`  ${shown.count}`}</ui.Text>
-            <ui.Text color={COLOR.accent}>{`  ${shown.bar}`}</ui.Text>
-            <ui.Text bold color={COLOR.warning}>{`  ● ${shown.clock}`}</ui.Text>
-          </ui.Text>
+      <ui.Box key="progress" flexDirection="column" marginTop={1}>
+        <ui.Box key="progress:line" flexDirection="row">
+          {chip(ui)}
+          <ui.Box flexShrink={0}>
+            <ui.Text>
+              <ui.Text bold>{`  ${shown.count}`}</ui.Text>
+              <ui.Text color={COLOR.accent}>{`  ${shown.bar}`}</ui.Text>
+              <ui.Text bold color={COLOR.warning}>{`  ● ${shown.clock}`}</ui.Text>
+            </ui.Text>
+          </ui.Box>
+          <ui.Box flexGrow={1} flexShrink={1}>
+            <ui.Text dimColor wrap="truncate-end">{`  ${shown.event ?? ''}  `}</ui.Text>
+          </ui.Box>
         </ui.Box>
-        <ui.Box flexGrow={1} flexShrink={1}>
-          <ui.Text dimColor wrap="truncate-end">{`  ${shown.event ?? ''}  `}</ui.Text>
-        </ui.Box>
+        {rows.map(row => (
+          <ui.Box key={`seat:${row.seat}`} flexDirection="column">
+            <ui.Text wrap="truncate-end">
+              <ui.Text color={GLYPH[row.state].color}>{`  ${GLYPH[row.state].mark} `}</ui.Text>
+              <ui.Text bold>{row.seat.padEnd(seatWidth)}</ui.Text>
+              <ui.Text dimColor>{`  ${row.model.padEnd(modelWidth)}  ${row.count}  ${row.clock}`}</ui.Text>
+            </ui.Text>
+            {row.failures.map(f => (
+              <ui.Box key={`seat:${row.seat}:${f.lens}`} flexDirection="column">
+                <ui.Text color={COLOR.danger} wrap="wrap">{`      ✗ ${f.lens} · ${f.reason}`}</ui.Text>
+                {f.error ? <ui.Text wrap="wrap">{`        ${f.error}`}</ui.Text> : null}
+              </ui.Box>
+            ))}
+          </ui.Box>
+        ))}
       </ui.Box>
     )
   })

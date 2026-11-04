@@ -1,9 +1,11 @@
 // ABOUTME: Words for a tribunal run's band above the prompt
 // ABOUTME: Pure functions over the Bash command that starts or waits on a run, the status.json it writes, and local lens subagents
 
-export type Cell = { lens: string; seat: string; status: string }
-export type RunStatus = { state: string; pid: number; started: string; total: number; done: number; cells: Cell[] }
+export type Cell = { lens: string; seat: string; status: string; detail?: string; ended?: string; error?: string }
+export type RunStatus = { state: string; pid: number; started: string; total: number; done: number; cells: Cell[]; models?: Record<string, string> }
 export type Band = { count: string; bar: string; clock: string; event?: string }
+export type Failure = { lens: string; reason: string; error?: string }
+export type SeatRow = { seat: string; model: string; state: 'running' | 'ok' | 'failed'; count: string; clock: string; failures: Failure[] }
 
 const LIVE_STATES = new Set(['prepared', 'running'])
 const BAR_CELLS = 8
@@ -42,7 +44,47 @@ export function parseStatus(text: string): RunStatus | undefined {
     total: typeof r.cells_total === 'number' ? r.cells_total : cells.length,
     done: typeof r.cells_done === 'number' ? r.cells_done : cells.filter(c => c.status !== 'running').length,
     cells,
+    models: seatModels(r),
   }
+}
+
+const text = (v: unknown): string => (typeof v === 'string' ? v : '')
+
+// The model each seat runs: codex and claude-cli from the rule the run
+// applied, any other seat from the first part of what discover said of it.
+function seatModels(r: Record<string, unknown>): Record<string, string> {
+  const models: Record<string, string> = {}
+  const info = typeof r.seat_info === 'object' && r.seat_info !== null ? (r.seat_info as Record<string, unknown>) : {}
+  for (const [seat, said] of Object.entries(info)) models[seat] = text(said).split(',')[0]?.trim() ?? ''
+  const pinned = (model: unknown, effort: unknown) => [text(model), text(effort)].filter(Boolean).join(' ')
+  if (models.codex !== undefined && text(r.codex_model)) models.codex = pinned(r.codex_model, r.codex_effort)
+  if (models['claude-cli'] !== undefined && text(r.claude_model)) models['claude-cli'] = pinned(r.claude_model, r.claude_effort)
+  return models
+}
+
+// One row per tribunal seat, in the order its cells come: live while any of
+// its lenses runs, failed once one ended without a valid report. Its clock
+// counts from the run's start to its last lens ending.
+export function seatRows(status: RunStatus, followedSinceMs: number, nowMs: number): SeatRow[] {
+  const startedMs = Date.parse(status.started)
+  const fromMs = Number.isNaN(startedMs) ? followedSinceMs : startedMs
+  const bySeat = new Map<string, Cell[]>()
+  for (const c of status.cells) if (c.seat !== 'local') bySeat.set(c.seat, [...(bySeat.get(c.seat) ?? []), c])
+  return [...bySeat].map(([seat, cells]) => {
+    const done = cells.filter(c => c.status !== 'running')
+    const failed = done.filter(c => c.status !== 'ok')
+    const state = done.length < cells.length ? 'running' : failed.length > 0 ? 'failed' : 'ok'
+    const endedMs = Math.max(...done.map(c => Date.parse(c.ended ?? '')).filter(ms => !Number.isNaN(ms)))
+    const toMs = state === 'running' || !Number.isFinite(endedMs) ? nowMs : endedMs
+    return {
+      seat,
+      model: status.models?.[seat] ?? '',
+      state,
+      count: `${done.length} of ${cells.length}`,
+      clock: clock(fromMs, toMs),
+      failures: failed.map(c => ({ lens: c.lens, reason: `${c.status}${c.detail ? `: ${c.detail}` : ''}`, ...(c.error ? { error: c.error } : {}) })),
+    }
+  })
 }
 
 // The lens a local-mode subagent reviews for, from the agent type it was

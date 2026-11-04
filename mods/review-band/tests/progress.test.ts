@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'bun:test'
-import { abandonedNotice, band, finishNotice, latestEvent, lensOf, localStatus, parseStatus, tribunalRunDir } from '../hooks/progress'
+import { abandonedNotice, band, finishNotice, latestEvent, lensOf, localStatus, parseStatus, seatRows, tribunalRunDir } from '../hooks/progress'
 
 const DIR = '/tmp/x/review-board/review-pr-508-20261016-182522'
 
@@ -61,5 +61,44 @@ describe('local run', () => {
     cells[1]!.status = 'failed'
     expect(live.cells[1]!.status).toBe('running')
     expect(finishNotice(localStatus(cells, ''))).toEqual({ text: 'finished: 1 of 2 reports ok, 1 failed', isFailure: false })
+  })
+})
+
+describe('seatRows', () => {
+  const started = '2026-10-16T15:25:22Z'
+  const at = (secs: number) => Date.parse(started) + secs * 1000
+  const run = parseStatus(JSON.stringify({
+    state: 'running', pid: 42, started, cells_total: 6, cells_done: 4,
+    codex_model: 'gpt-6-sol', codex_effort: 'xhigh',
+    seat_info: { codex: 'gpt-6-astra, low, week 3%, read-only sandbox', grok: 'default model, xhigh, read-only sandbox', antigravity: 'argon, --sandbox' },
+    cells: [
+      { lens: 'security', seat: 'codex', status: 'ok', ended: '2026-10-16T15:25:52Z' },
+      { lens: 'simplicity', seat: 'codex', status: 'running' },
+      { lens: 'security', seat: 'grok', status: 'ok', ended: '2026-10-16T15:26:02Z' },
+      { lens: 'simplicity', seat: 'grok', status: 'ok', ended: '2026-10-16T15:26:22Z' },
+      { lens: 'security', seat: 'antigravity', status: 'did-not-report', detail: 'quota or auth limit (see security.antigravity.log)', ended: '2026-10-16T15:25:32Z', error: 'Error: out of credits' },
+      { lens: 'simplicity', seat: 'antigravity', status: 'ok', ended: '2026-10-16T15:25:42Z' },
+    ],
+  }))!
+
+  test('a row per seat with its model, count and clock', () => {
+    const rows = seatRows(run, 0, at(90))
+    expect(rows.map(r => [r.seat, r.model, r.state, r.count, r.clock])).toEqual([
+      ['codex', 'gpt-6-sol xhigh', 'running', '1 of 2', '1:30'],
+      ['grok', 'default model', 'ok', '2 of 2', '1:00'],
+      ['antigravity', 'argon', 'failed', '2 of 2', '0:20'],
+    ])
+  })
+  test('a failed lens carries its reason and the error its log ended on', () => {
+    expect(seatRows(run, 0, at(90))[2]!.failures).toEqual([
+      { lens: 'security', reason: 'did-not-report: quota or auth limit (see security.antigravity.log)', error: 'Error: out of credits' },
+    ])
+  })
+  test('a status.json from before seat_info still gives rows', () => {
+    const old = parseStatus(status('running', ['ok', 'running']))!
+    expect(seatRows(old, 0, at(5)).map(r => [r.seat, r.model, r.count])).toEqual([['codex', '', '1 of 2']])
+  })
+  test('local lens subagents get no seat rows', () => {
+    expect(seatRows(localStatus([{ lens: 'security', seat: 'local', status: 'running' }], started), 0, at(1))).toEqual([])
   })
 })

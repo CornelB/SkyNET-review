@@ -49,8 +49,11 @@
 # STATUS
 #   status.json: id, target, mode, state (running | done | cancelled |
 #   aborted | failed), pid, started, finished, cap, claude_model,
-#   claude_effort, codex_model, codex_effort, codex_usage, seats, skipped, dead,
-#   cells_total, cells_done, cells[]. Rewritten atomically as cells finish.
+#   claude_effort, codex_model, codex_effort, codex_usage, seats,
+#   seat_info (seat: what discover said), skipped, dead, cells_total,
+#   cells_done, cells[] (lens, seat, status, detail, report, ended, error:
+#   the last line of a failed cell's log). Rewritten atomically as cells
+#   finish.
 #
 # No approval bypasses, no passthrough flags: every CLI flag lives in
 # scripts/seats/<seat>.sh. Portable: Linux, macOS (bash 3.2), Git Bash.
@@ -64,14 +67,14 @@ SEATS_DIR="$SCRIPT_DIR/seats"
 die() { echo "run-tribunal.sh: $*" >&2; exit 2; }
 
 CMD=${1:-}; [ -n "$CMD" ] && shift
-case "$CMD" in -h|--help|help) sed -n '2,56p' "$0"; exit 0 ;; esac
+case "$CMD" in -h|--help|help) sed -n '2,59p' "$0"; exit 0 ;; esac
 ONLY="" CLAUDE_MODEL_ARG="" CLAUDE_EFFORT_ARG=""
 while getopts "s:m:e:h" opt; do
   case "$opt" in
     s) ONLY=$(printf '%s' "$OPTARG" | tr ',' ' ') ;;
     m) CLAUDE_MODEL_ARG=$OPTARG ;;
     e) CLAUDE_EFFORT_ARG=$OPTARG ;;
-    h) sed -n '2,56p' "$0"; exit 0 ;;
+    h) sed -n '2,59p' "$0"; exit 0 ;;
     *) die "unknown flag; run with -h" ;;
   esac
 done
@@ -122,6 +125,13 @@ need_run_dir() {
 now() { date -u +%Y-%m-%dT%H:%M:%SZ; }
 
 # ---------------------------------------------------------------- status ---
+# What the band shows under a failed cell: the last non-blank line of its
+# log, control characters dropped, at most 300 characters.
+cell_error() { # $1=log
+  [ -f "$1" ] || return 0
+  tr -d '\000-\010\013-\037' <"$1" | awk 'NF{l=$0} END{print substr(l, 1, 300)}'
+}
+
 # Rebuilt from the per-cell status files, so concurrent cells never write the
 # same file. Fields set by the worker: STATE, STARTED, FINISHED, CAP, SEATS,
 # SKIPPED (seat|reason lines).
@@ -131,17 +141,26 @@ write_status() {
     for lens in $RC_LENSES; do
       total=$((total + 1))
       f="$RUN_DIR/reports/$lens.$seat.status"
+      ended="" error=""
       if [ -f "$f" ]; then
         done_n=$((done_n + 1))
         IFS='|' read -r _l _s st detail <"$f"
+        ended=$(cat "$RUN_DIR/reports/$lens.$seat.ended" 2>/dev/null)
+        [ "$st" = ok ] || error=$(cell_error "$RUN_DIR/reports/$lens.$seat.log")
         [ "$st" = ok ] || case " $dead " in *" $seat "*) ;; *) dead="$dead $seat";; esac
       else
         st=running detail=""
       fi
-      cells="$cells${cells:+,}{\"lens\":\"$lens\",\"seat\":\"$seat\",\"status\":\"$st\",\"detail\":\"$(rc_json_str "$detail")\",\"report\":\"$(rc_json_str "$RUN_DIR/reports/$lens.$seat.md")\"}"
+      cells="$cells${cells:+,}{\"lens\":\"$lens\",\"seat\":\"$seat\",\"status\":\"$st\",\"detail\":\"$(rc_json_str "$detail")\",\"report\":\"$(rc_json_str "$RUN_DIR/reports/$lens.$seat.md")\",\"ended\":\"$ended\",\"error\":\"$(rc_json_str "$error")\"}"
     done
   done
   seats_json="" ; for s in $SEATS; do seats_json="$seats_json${seats_json:+,}\"$s\""; done
+  info_json=""
+  while IFS='|' read -r s info; do
+    [ -n "$s" ] && info_json="$info_json${info_json:+,}\"$s\":\"$(rc_json_str "$info")\""
+  done <<EOF
+$SEAT_INFO
+EOF
   skipped_json=""
   while IFS='|' read -r s reason; do
     [ -n "$s" ] && skipped_json="$skipped_json${skipped_json:+,}\"$s\":\"$(rc_json_str "$reason")\""
@@ -149,11 +168,11 @@ write_status() {
 $SKIPPED
 EOF
   dead_json=""; for s in $dead; do dead_json="$dead_json${dead_json:+,}\"$s\""; done
-  printf '{"id":"%s","target":"%s","mode":"tribunal","state":"%s","pid":%s,"started":"%s","finished":"%s","cap":%s,"claude_model":"%s","claude_effort":"%s","codex_model":"%s","codex_effort":"%s","codex_usage":"%s","seats":[%s],"skipped":{%s},"dead":[%s],"cells_total":%s,"cells_done":%s,"cells":[%s]}\n' \
+  printf '{"id":"%s","target":"%s","mode":"tribunal","state":"%s","pid":%s,"started":"%s","finished":"%s","cap":%s,"claude_model":"%s","claude_effort":"%s","codex_model":"%s","codex_effort":"%s","codex_usage":"%s","seats":[%s],"seat_info":{%s},"skipped":{%s},"dead":[%s],"cells_total":%s,"cells_done":%s,"cells":[%s]}\n' \
     "$(rc_json_str "$(rc_json_get "$RUN_DIR/run.json" id)")" "$(rc_json_str "$(rc_json_get "$RUN_DIR/run.json" target)")" \
     "$STATE" "$$" "$STARTED" "$FINISHED" "$CAP" "$RC_CLAUDE_MODEL" "$RC_CLAUDE_EFFORT" \
     "${RC_CODEX_MODEL:-}" "${RC_CODEX_EFFORT:-}" "$(rc_json_str "${RC_CODEX_USAGE:-}")" \
-    "$seats_json" "$skipped_json" "$dead_json" "$total" "$done_n" "$cells" >"$RUN_DIR/status.json.tmp"
+    "$seats_json" "$info_json" "$skipped_json" "$dead_json" "$total" "$done_n" "$cells" >"$RUN_DIR/status.json.tmp"
   mv "$RUN_DIR/status.json.tmp" "$RUN_DIR/status.json"
 }
 
@@ -182,6 +201,7 @@ run_cell() { # $1=seat $2=lens
     skipped|did-not-report) final="$status|$detail" ;;
     *) final="did-not-report|seat script printed no status line (see $(basename "$log"))" ;;
   esac
+  now >"$RUN_DIR/reports/$lens.$seat.ended"
   echo "$lens|$seat|$final" >"$RUN_DIR/reports/$lens.$seat.status"
 }
 
@@ -207,11 +227,12 @@ worker() {
   RC_CLAUDE_EFFORT=${CLAUDE_EFFORT_ARG:-$2}
   export RC_CLAUDE_MODEL RC_CLAUDE_EFFORT
   pick_codex
-  STARTED=$(now) FINISHED="" STATE=running SEATS="" SKIPPED=""
+  STARTED=$(now) FINISHED="" STATE=running SEATS="" SKIPPED="" SEAT_INFO=""
 
   while IFS='|' read -r s st detail; do
     [ -n "$s" ] || continue
-    if [ "$st" = available ]; then SEATS="$SEATS $s"; else SKIPPED="$SKIPPED$s|$detail
+    if [ "$st" = available ]; then SEATS="$SEATS $s" SEAT_INFO="$SEAT_INFO$s|$detail
+"; else SKIPPED="$SKIPPED$s|$detail
 "; fi
   done <<EOF
 $(discover)
@@ -237,7 +258,7 @@ EOF
   trap on_term TERM INT
 
   echo "$$" >"$RUN_DIR/tribunal.pid"
-  rm -f "$RUN_DIR/.cancelled" "$RUN_DIR"/reports/*.status
+  rm -f "$RUN_DIR/.cancelled" "$RUN_DIR"/reports/*.status "$RUN_DIR"/reports/*.ended
   rm -rf "$RUN_DIR"/reports/.retry-*
   write_status
 

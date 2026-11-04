@@ -45,7 +45,8 @@ fake_plain() { # $1=name
 }
 
 # A fake codex: writes a report to the -o file. FAKE_MODE picks the report:
-#   ok (default) | noverdict | sleep (streams to stderr, never finishes)
+#   ok (default) | noverdict (and an error line on stderr) | sleep (streams
+#   to stderr, never finishes)
 # Each call logs "start <oss|cloud>" and "end <oss|cloud>" to $FAKE_LOG and
 # its -m model to $FAKE_LOG.models. `codex app-server` answers the rate-limit
 # read with a weekly usage of $FAKE_CODEX_WEEK % and a 5h usage of
@@ -78,7 +79,7 @@ echo "start $kind" >>"$FAKE_LOG"
 case "${FAKE_MODE:-ok}" in
   ok) sleep "${FAKE_SLEEP:-0}"
       printf 'Verdict: pass\n1. a.sh:L1 | 🔵 nit | name lies. Rename.\nNot checked: nothing.\n' >"$out" ;;
-  noverdict) printf 'Hello, here is my review.\n' >"$out" ;;
+  noverdict) printf 'Hello, here is my review.\n' >"$out"; printf 'Error: connection reset by peer\n\n' >&2 ;;
   sleep) echo "working" >&2; sleep 30 ;;
 esac
 echo "end $kind" >>"$FAKE_LOG"

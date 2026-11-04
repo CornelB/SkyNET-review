@@ -170,6 +170,9 @@ EOF
   [ "$status" -eq 0 ]
   grep -q '^simplicity|codex|did-not-report|no verdict on line 1' "$d/reports/simplicity.codex.status"
   grep -q '"dead":\["codex"\]' "$d/status.json"
+  # The band shows the seat's model and the failed cell's last log line.
+  grep -q '"seat_info":{"codex":"gpt-6-astra, low, week usage unknown, read-only sandbox"}' "$d/status.json"
+  grep -q '"status":"did-not-report","detail":"no verdict on line 1[^"]*","report":"[^"]*","ended":"20[0-9-]*T[0-9:]*Z","error":"Error: connection reset by peer"' "$d/status.json"
 }
 
 @test "codex-oss runs its four lenses one at a time, codex in parallel" {
