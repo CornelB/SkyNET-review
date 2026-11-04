@@ -1,5 +1,6 @@
 ---
 name: review-engine
+user-invocable: false
 description: Internal engine for /review-board:review. Hard constraints, run directory layout, the scripts that build the scope and run the tribunal, the seat contract and the seat setup. Loaded by the review command; not meant to be invoked directly.
 allowed-tools:
   - Bash(bash */review-board/scripts/prepare-run.sh *)
