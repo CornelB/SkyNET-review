@@ -2,25 +2,24 @@
 # antigravity seat: agy CLI, --sandbox, no --mode, no shell. Contract:
 # lib/seat.sh. No gemini-cli fallback.
 #
-# PERMISSIONS. Headless agy auto-denies any tool permission it cannot prompt
-# for, and one denial ends the run. agy has three permission classes:
-# command, read_file, write_file. This seat grants read_file ONLY, through a
-# PINNED allow-list merged into ~/.gemini/antigravity-cli/settings.json:
-#   - No `command` rule: agy matches a command rule against the FULL command
-#     string, and an agentic reviewer emits a different line every time, so
-#     no scoped shell rule can match. The only rule that would is
-#     `command(*)`: blanket shell approval on an untrusted tree, which this
-#     plugin refuses. So the seat gets no shell and is told so in its prompt.
-#   - `write_file` is deliberately absent and must stay absent. With no shell
-#     and no write permission, read-only is enforced by the CLI.
+# PERMISSIONS. The seat's own agy-settings.json, passed with --settings,
+# replaces the permissions of ~/.gemini/antigravity-cli/settings.json for this
+# run only; model and project still come from the user's file. The user's file
+# is never read for permissions and never written.
+#   - Allow read_file(*) only. It lets the seat read any file the user can,
+#     because the worktree path is per-run.
+#   - Deny write_file, command, read_url, mcp and unsandboxed. A denied call
+#     fails and the run goes on; a call with no rule at all ends a headless
+#     run with no output. Leaving write_file out is NOT enough: agy's "auto"
+#     agent mode approves file edits that no rule names.
+#   - No command rule can be scoped: agy matches it against the full command
+#     string. command(*) would be blanket shell approval on an untrusted tree.
+#   - --sandbox: the shell (were it ever allowed) is read-only and has no
+#     network.
+#   - search_web has no permission class and no setting turns it off. It is
+#     the one remaining way out: a query string reaches Google.
 #   - No `--mode plan`: plan mode stops and waits for a Proceed click, so the
 #     seat writes a plan file and never reviews.
-#   - read_file(*) lets the seat read any file the user can, not only the
-#     worktree: path-scoped rules cannot work because the worktree path is
-#     per-run, and nothing from the invocation may influence what is written
-#     to settings. It grants no writes and no shell.
-# The merge is idempotent, keeps a backup, preserves every other key, and is
-# named in the status line. `antigravity.sh setup` runs it by hand.
 #
 # MODEL. Highest-ranked slug from `agy models`: argon first (high, then
 # medium; low is never used), then the flash family (newest version, high
@@ -34,38 +33,13 @@
 set -u
 SEAT=antigravity
 
-AGY_SETTINGS="$HOME/.gemini/antigravity-cli/settings.json"
-AGY_ALLOWS='read_file(*)'
+AGY_SETTINGS="$(cd "$(dirname "$0")" && pwd)/agy-settings.json"
 AGY_FALLBACK="gemini-4-argon-high gemini-4-argon-medium gemini-3.8-flash-high gemini-3.1-pro-high"
 AGY_MODEL_ERR='invalid model selection|not recognized as a known model|not supported in the selected location|required the "command" permission'
 AGY_MODEL_CACHE="${XDG_CACHE_HOME:-$HOME/.cache}/review-board/agy-model"
-AGY_NOSHELL="HARD CONSTRAINT: you have NO shell access. Every shell command is auto-denied and one attempt ends your run with no report. Read the diff file and every source file ONLY with your native file-reading tool, and ONLY by the absolute paths given in this prompt: a relative path does not resolve without a shell. If you cannot read a file, say so; reporting a value you did not read is a failed review."
+AGY_NOSHELL="HARD CONSTRAINT: you have NO shell access. Every shell command is denied. Read the diff file and every source file ONLY with your native file-reading tool, and ONLY by the absolute paths given in this prompt: a relative path does not resolve without a shell. If you cannot read a file, say so; reporting a value you did not read is a failed review."
 NL='
 '
-
-agy_configured() { grep -q '"read_file(\*)"' "$AGY_SETTINGS" 2>/dev/null; }
-
-# Merge the pinned allow-list, preserving every other key. Fixed content.
-# JSON::PP is core perl (5.14+).
-ensure_agy_config() {
-  command -v perl >/dev/null 2>&1 || { echo "agy auto-config needs perl" >&2; return 1; }
-  mkdir -p "$(dirname "$AGY_SETTINGS")" 2>/dev/null || return 1
-  [ -f "$AGY_SETTINGS" ] && { cp "$AGY_SETTINGS" "$AGY_SETTINGS.bak" || return 1; }
-  ALLOWS="$AGY_ALLOWS" SETTINGS="$AGY_SETTINGS" perl -MJSON::PP -e '
-    my $f = $ENV{SETTINGS};
-    my $data = {};
-    if (-f $f) {
-      local $/; open my $in, "<", $f or die "read $f: $!";
-      my $txt = <$in>; $data = JSON::PP->new->decode($txt) if $txt =~ /\S/;
-    }
-    my %have = map { $_ => 1 } @{ $data->{permissions}{allow} // [] };
-    my @add = grep { !$have{$_} } split " ", $ENV{ALLOWS};
-    push @{ $data->{permissions}{allow} }, @add;
-    open my $out, ">", $f or die "write $f: $!";
-    print $out JSON::PP->new->pretty->canonical->encode($data);
-    print @add ? "added: @add\n" : "already configured, nothing to do\n";
-  '
-}
 
 # Ordered model candidates: argon (high, medium) before flash before pro,
 # newer first, higher effort first.
@@ -85,36 +59,14 @@ agy_candidates() {
   ' 2>/dev/null
 }
 
-if [ "${1:-}" = "setup" ]; then
-  ensure_agy_config || { echo "antigravity.sh: setup failed; original (if any) kept at $AGY_SETTINGS.bak" >&2; exit 2; }
-  echo "done: $AGY_SETTINGS"
-  exit 0
-fi
-
-AGY_STATE=""
-
 seat_gate() {
   command -v agy >/dev/null 2>&1 || { GATE_REASON="agy not on PATH"; return 1; }
-  [ "$CHECK" -eq 1 ] && return 0
-  if ! agy_configured; then
-    # Four lenses start at once; one merges, the others wait for it.
-    if mkdir "$OUTDIR/.agy-setup.lock" 2>/dev/null; then
-      if ensure_agy_config >"$OUTDIR/agy-setup.log" 2>&1; then
-        AGY_STATE="; auto-configured allow-list (agy-setup.log)"
-      else
-        GATE_REASON="allow-list auto-config failed (agy-setup.log)"; return 1
-      fi
-    else
-      i=0; while ! agy_configured && [ "$i" -lt 30 ]; do sleep 1; i=$((i + 1)); done
-      agy_configured || { GATE_REASON="allow-list auto-config did not complete"; return 1; }
-    fi
-  fi
   return 0
 }
 
 seat_describe() {
   used=$(cat "${OUT%.md}.model" 2>/dev/null)
-  echo "${used:-best argon or flash slug}, --sandbox, read_file only$AGY_STATE"
+  echo "${used:-best argon or flash slug}, --sandbox, read_file only (agy-settings.json)"
 }
 
 # Walk the candidates past model-selection errors. Each attempt overwrites the
@@ -137,7 +89,7 @@ seat_invoke() {
   fi
   for m in $models; do
     echo "== agy model $m ==" >>"$attempts"
-    agy --sandbox --model "$m" --print-timeout "${CAP}s" \
+    agy --sandbox --settings "$AGY_SETTINGS" --model "$m" --print-timeout "${CAP}s" \
       -p "${AGY_NOSHELL}${NL}${NL}${PROMPT}" >"$OUT" 2>"$LOG"
     cat "$LOG" >>"$attempts"
     grep -qiE "$AGY_MODEL_ERR" "$LOG" && continue

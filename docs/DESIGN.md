@@ -54,7 +54,7 @@ All seats are harnesses that read the tree in the worktree under their read-only
 | Seat | Gate | Invocation shape |
 |------|------|------------------|
 | codex | `codex` on PATH | `codex exec --skip-git-repo-check -s read-only`, model and effort from the codex rule |
-| antigravity | `agy` on PATH | `agy --sandbox`, no `--mode`; pinned `read_file(*)` allow-list merged into its settings as `tribunal.sh` does today. No gemini-cli fallback. |
+| antigravity | `agy` on PATH | `agy --sandbox --settings scripts/seats/agy-settings.json`, no `--mode`: allow `read_file(*)`, deny `write_file`, `command`, `read_url`, `mcp`, `unsandboxed`. No gemini-cli fallback. |
 | grok | `grok` and `jq` on PATH | `grok --sandbox read-only -p` (final message only), with the Linux podman-socket mask from `tribunal.sh` |
 | claude-cli | `claude` on PATH, seated like any other | `claude -p --permission-mode plan --setting-sources "" --no-session-persistence`, read-only tools only; model and effort follow the Claude rule for the tribunal |
 | kimi-cli | `kimi` on PATH | headless, read-only |

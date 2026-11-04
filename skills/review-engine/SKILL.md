@@ -66,7 +66,7 @@ All seats are harnesses that read the tree in the worktree under their read-only
 | Seat | Gate | Invocation |
 |------|------|------------|
 | codex | `codex` on PATH | `codex exec --skip-git-repo-check -s read-only`, model and effort from the codex rule |
-| antigravity | `agy` on PATH | `agy --sandbox`, no `--mode`, no shell; Gemini 4 Argon high or medium from `agy models` when the plan has it, else best flash slug (high effort), cached |
+| antigravity | `agy` on PATH | `agy --sandbox --settings agy-settings.json`, no `--mode`, no shell; Gemini 4 Argon high or medium from `agy models` when the plan has it, else best flash slug (high effort), cached |
 | grok | `grok` and `jq` on PATH | `grok --sandbox read-only --effort xhigh --output-format streaming-messages-json -p` (report = final message), Linux podman-socket mask when needed |
 | claude-cli | `claude` on PATH and authenticated | `claude -p --permission-mode plan --setting-sources "" --safe-mode --no-session-persistence --tools Read,Grep,Glob`, Claude rule above |
 | kimi-cli | `kimi` and `jq` on PATH | `kimi -p --agent-file scripts/seats/kimi-agent.md` (read tools only) |
@@ -79,7 +79,7 @@ Launcher rules: all seats start at once except `codex-oss`, whose four lenses ru
 
 ### agy permissions
 
-Headless agy auto-denies any tool permission it cannot prompt for. On first use the antigravity seat merges one pinned rule, `read_file(*)`, into `~/.gemini/antigravity-cli/settings.json` (idempotent, backup kept, named in the status line); `bash scripts/seats/antigravity.sh setup` does it by hand. Do not "fix" a denied agy run by adding `command(...)` rules: agy matches them against the full command string, so only `command(*)` would work, which is blanket shell approval on an untrusted tree. Do not bring back `--mode plan`: it waits for a Proceed click and never reviews.
+The antigravity seat runs with `--settings scripts/seats/agy-settings.json`, which replaces the permissions of the user's agy settings for that run only; the user's file is not read for permissions and not written. It allows `read_file(*)` and denies `write_file`, `command`, `read_url`, `mcp` and `unsandboxed`. Keep the deny list: a tool with no rule ends a headless run with no output, and agy's "auto" agent mode approves file edits that no rule names. `search_web` has no permission class and cannot be turned off. Do not "fix" a denied agy run by adding `command(...)` rules: agy matches them against the full command string, so only `command(*)` would work, which is blanket shell approval on an untrusted tree. Do not bring back `--mode plan`: it waits for a Proceed click and never reviews.
 
 ### grok sandbox
 
