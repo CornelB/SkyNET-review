@@ -102,7 +102,7 @@ A tribunal is launched as a background process so the session stays usable and a
 - Every repo operation goes through `scripts/pr-worktree.sh`; shell commands in command and skill text are literal, with no loops, variables or command substitution, so they are auto-approved.
 - US spelling throughout.
 - Tests: shellcheck on every script; bats for seat discovery and gating, cap sizing, report validation, prompt assembly, status output; a GitHub Actions workflow runs both on push.
-- grumpy-review in SkyNET-skills stays as it is; this plugin does not depend on it.
+- This plugin replaces the retired grumpy-review skill and does not depend on it.
 
 ## Credits
 
