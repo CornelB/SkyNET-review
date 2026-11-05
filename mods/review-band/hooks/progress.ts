@@ -1,7 +1,7 @@
-// ABOUTME: Words for a tribunal run's band above the prompt
+// ABOUTME: Words for a review run's band above the prompt, tribunal and local alike
 // ABOUTME: Pure functions over the Bash command that starts or waits on a run, the status.json it writes, and local lens subagents
 
-export type Cell = { lens: string; seat: string; status: string; detail?: string; ended?: string; error?: string }
+export type Cell = { lens: string; seat: string; status: string; detail?: string; ended?: string; error?: string; model?: string }
 export type RunStatus = { state: string; pid: number; started: string; total: number; done: number; cells: Cell[]; models?: Record<string, string> }
 export type Band = { count: string; bar: string; clock: string; event?: string }
 export type Failure = { lens: string; reason: string; error?: string }
@@ -62,14 +62,15 @@ function seatModels(r: Record<string, unknown>): Record<string, string> {
   return models
 }
 
-// One row per tribunal seat, in the order its cells come: live while any of
-// its lenses runs, failed once one ended without a valid report. Its clock
-// counts from the run's start to its last lens ending.
+// One row per seat (a tribunal's seats, or `local` for the lens subagents), in
+// the order its cells come: live while any of its lenses runs, failed once one
+// ended without a valid report. Its clock counts from the run's start to its
+// last lens ending.
 export function seatRows(status: RunStatus, followedSinceMs: number, nowMs: number): SeatRow[] {
   const startedMs = Date.parse(status.started)
   const fromMs = Number.isNaN(startedMs) ? followedSinceMs : startedMs
   const bySeat = new Map<string, Cell[]>()
-  for (const c of status.cells) if (c.seat !== 'local') bySeat.set(c.seat, [...(bySeat.get(c.seat) ?? []), c])
+  for (const c of status.cells) bySeat.set(c.seat, [...(bySeat.get(c.seat) ?? []), c])
   return [...bySeat].map(([seat, cells]) => {
     const done = cells.filter(c => c.status !== 'running')
     const failed = done.filter(c => c.status !== 'ok')
@@ -78,7 +79,7 @@ export function seatRows(status: RunStatus, followedSinceMs: number, nowMs: numb
     const toMs = state === 'running' || !Number.isFinite(endedMs) ? nowMs : endedMs
     return {
       seat,
-      model: status.models?.[seat] ?? '',
+      model: status.models?.[seat] ?? cells.find(c => c.model)?.model ?? '',
       state,
       count: `${done.length} of ${cells.length}`,
       clock: clock(fromMs, toMs),

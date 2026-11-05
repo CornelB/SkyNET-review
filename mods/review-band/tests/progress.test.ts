@@ -98,7 +98,14 @@ describe('seatRows', () => {
     const old = parseStatus(status('running', ['ok', 'running']))!
     expect(seatRows(old, 0, at(5)).map(r => [r.seat, r.model, r.count])).toEqual([['codex', '', '1 of 2']])
   })
-  test('local lens subagents get no seat rows', () => {
-    expect(seatRows(localStatus([{ lens: 'security', seat: 'local', status: 'running' }], started), 0, at(1))).toEqual([])
+  test('local lens subagents get the same row, with why a lens failed', () => {
+    const local = localStatus([
+      { lens: 'security', seat: 'local', status: 'running', model: 'claude-fable-5-1' },
+      { lens: 'simplicity', seat: 'local', status: 'failed', model: 'claude-fable-5-1', detail: 'refusal', error: 'declined', ended: '2026-10-16T15:25:32Z' },
+    ], started)
+    expect(seatRows(local, 0, at(30))).toEqual([{
+      seat: 'local', model: 'claude-fable-5-1', state: 'running', count: '1 of 2', clock: '0:30',
+      failures: [{ lens: 'simplicity', reason: 'failed: refusal', error: 'declined' }],
+    }])
   })
 })

@@ -1,5 +1,5 @@
 // ABOUTME: Hooks module that draws a live review run's progress in a band above the prompt
-// ABOUTME: Follows a tribunal's status.json (a row per seat, failed lenses with their error), or the local lens subagents
+// ABOUTME: Follows a tribunal's status.json or the local lens subagents into one status, drawn as a row per seat with failed lenses' errors
 import type { Elements, EngineInterface, Register, Timer } from 'claude-code'
 import { abandonedNotice, band, finishNotice, isLive, latestEvent, lensOf, localStatus, parseStatus, seatRows, tribunalRunDir, type Cell, type RunStatus } from './progress'
 
@@ -33,6 +33,15 @@ async function readStatus($: EngineInterface, runDir: string): Promise<RunStatus
   return parseStatus(await $.fs.read(path))
 }
 
+// A lens subagent's cell as a tribunal cell reads: its end time, and why it
+// failed when it did.
+function endCell(cell: Cell, nowMs: number, failure?: string, error?: string): void {
+  cell.status = failure === undefined ? 'ok' : 'failed'
+  cell.ended = new Date(nowMs).toISOString()
+  if (failure !== undefined) cell.detail = failure
+  if (error) cell.error = error
+}
+
 // A subagent that fails or is killed may end no turn, and one the engine has
 // dropped from its list is over: either counts as a failed lens.
 async function readLocal($: EngineInterface, state: BandState, run: Follow, agents: Map<string, Cell>, started: string): Promise<RunStatus> {
@@ -42,7 +51,7 @@ async function readLocal($: EngineInterface, state: BandState, run: Follow, agen
     for (const [id, cell] of agents) {
       const now = listed.get(id)
       if (cell.status === 'running' && (now === undefined || now === 'completed' || now === 'failed' || now === 'killed')) {
-        cell.status = now === 'completed' ? 'ok' : 'failed'
+        endCell(cell, state.nowMs, now === 'completed' ? undefined : (now ?? 'dropped by the engine'))
       }
     }
   }
@@ -107,12 +116,12 @@ async function follow($: EngineInterface, state: BandState, runDir: string): Pro
 
 // The four lens subagents start in one message: the first opens the run, the
 // rest join it. A live tribunal keeps the band.
-async function followLens($: EngineInterface, state: BandState, agentId: string, lens: string): Promise<void> {
+async function followLens($: EngineInterface, state: BandState, agentId: string, lens: string, model: string): Promise<void> {
   state.nowMs = await $.clock.now()
   let source = state.run?.source
   if (source && 'runDir' in source) return
   if (!source) source = watch($, state, { agents: new Map(), started: new Date(state.nowMs).toISOString() }).source
-  if ('agents' in source) source.agents.set(agentId, { lens, seat: 'local', status: 'running' })
+  if ('agents' in source) source.agents.set(agentId, { lens, seat: 'local', status: 'running', model })
 }
 
 function chip(ui: Pick<Elements['terminal'], 'Box' | 'Text'>) {
@@ -137,7 +146,7 @@ export const register: Register = on => {
   on('agent.spawn', async ($, e, next) => {
     const result = await next(e)
     const lens = lensOf(e.subagentType)
-    if (lens && result.agentId) await followLens($, state, result.agentId, lens).catch((err: unknown) => $.ui.log(`review band: ${String(err)}`))
+    if (lens && result.agentId) await followLens($, state, result.agentId, lens, result.model).catch((err: unknown) => $.ui.log(`review band: ${String(err)}`))
     return result
   })
 
@@ -145,7 +154,10 @@ export const register: Register = on => {
   on('turn.complete', ($, e, next) => {
     const source = state.run?.source
     const cell = e.agentId && source && 'agents' in source ? source.agents.get(e.agentId) : undefined
-    if (cell?.status === 'running') cell.status = e.reason === 'answer' ? 'ok' : 'failed'
+    if (cell?.status === 'running') {
+      const refusal = e.reason === 'refusal' ? (e.refusal.explanation ?? e.refusal.category ?? undefined) : undefined
+      endCell(cell, state.nowMs, e.reason === 'answer' ? undefined : e.reason, refusal)
+    }
     return next(e)
   })
 
