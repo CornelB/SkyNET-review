@@ -54,7 +54,7 @@ REPO=""
 while getopts "C:h" opt; do
   case "$opt" in
     C) REPO=$OPTARG ;;
-    h) sed -n '2,45p' "$0"; exit 0 ;;
+    h) awk 'NR>1 && !/^#/{exit} NR>1' "$0"; exit 0 ;;
     *) die "unknown flag — run with -h" ;;
   esac
 done

@@ -67,14 +67,14 @@ SEATS_DIR="$SCRIPT_DIR/seats"
 die() { echo "run-tribunal.sh: $*" >&2; exit 2; }
 
 CMD=${1:-}; [ -n "$CMD" ] && shift
-case "$CMD" in -h|--help|help) sed -n '2,59p' "$0"; exit 0 ;; esac
+case "$CMD" in -h|--help|help) awk 'NR>1 && !/^#/{exit} NR>1' "$0"; exit 0 ;; esac
 ONLY="" CLAUDE_MODEL_ARG="" CLAUDE_EFFORT_ARG=""
 while getopts "s:m:e:h" opt; do
   case "$opt" in
     s) ONLY=$(printf '%s' "$OPTARG" | tr ',' ' ') ;;
     m) CLAUDE_MODEL_ARG=$OPTARG ;;
     e) CLAUDE_EFFORT_ARG=$OPTARG ;;
-    h) sed -n '2,59p' "$0"; exit 0 ;;
+    h) awk 'NR>1 && !/^#/{exit} NR>1' "$0"; exit 0 ;;
     *) die "unknown flag; run with -h" ;;
   esac
 done

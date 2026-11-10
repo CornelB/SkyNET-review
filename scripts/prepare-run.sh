@@ -42,7 +42,7 @@ while getopts "C:d:M:h" opt; do
     C) REPO=$OPTARG ;;
     d) ROOT=$OPTARG ;;
     M) MODE=$OPTARG ;;
-    h) sed -n '2,29p' "$0"; exit 0 ;;
+    h) awk 'NR>1 && !/^#/{exit} NR>1' "$0"; exit 0 ;;
     *) die "unknown flag; run with -h" ;;
   esac
 done
