@@ -265,6 +265,30 @@ EOS
   [ "$(grep -c 'start oss' "$FAKE_LOG")" -eq 4 ]
 }
 
+@test "codex-oss tells codex the served context and compacts at 3/4 of it" {
+  fake_codex; fake_ollama_show
+  d=$(prepared_run)
+  OLLAMA_REVIEWER_MODEL=m FAKE_NUM_CTX=32768 run tribunal run -s codex-oss "$d"
+  [ "$status" -eq 0 ]
+  [ "$(grep -c '^model_context_window=32768$' "$FAKE_LOG.config")" -eq 4 ]
+  [ "$(grep -c '^model_auto_compact_token_limit=24576$' "$FAKE_LOG.config")" -eq 4 ]
+}
+
+@test "codex-oss passes no context when none is stated or ollama show fails" {
+  fake_codex; fake_ollama_show
+  d=$(prepared_run)
+  OLLAMA_REVIEWER_MODEL=m run tribunal run -s codex-oss "$d"
+  [ "$status" -eq 0 ]
+  [ "$(grep -c 'start oss' "$FAKE_LOG")" -eq 4 ]
+  ! grep -q 'context_window\|compact' "$FAKE_LOG.config"
+  printf '#!/usr/bin/env bash\nexit 1\n' >"$FAKEBIN/ollama"
+  : >"$FAKE_LOG"
+  OLLAMA_REVIEWER_MODEL=m run tribunal run -s codex-oss "$d"
+  [ "$status" -eq 0 ]
+  [ "$(grep -c 'start oss' "$FAKE_LOG")" -eq 4 ]
+  ! grep -q 'context_window\|compact' "$FAKE_LOG.config"
+}
+
 @test "codex-oss context: 4096 without num_ctx, capped at the trained length" {
   fake_codex; fake_ollama_show
   d=$(prepared_run)

@@ -9,13 +9,14 @@ set -u
 SEAT=codex-oss
 
 # The context ollama serves the model with: its num_ctx parameter, else
-# OLLAMA_CONTEXT_LENGTH, else ollama's 4096; never above the model's trained
-# context length. Empty when ollama cannot show the model.
+# OLLAMA_CONTEXT_LENGTH, else $1 (default 4096, ollama's smallest default);
+# never above the model's trained context length. Empty when ollama cannot
+# show the model, or when no value is stated and $1 is "".
 ollama_ctx() {
   info=$(ollama show "$OLLAMA_REVIEWER_MODEL" 2>/dev/null) || return 0
   max=$(printf '%s\n' "$info" | awk '$1 == "context" && $2 == "length" { print $3; exit }')
   ctx=$(printf '%s\n' "$info" | awk '$1 == "num_ctx" { print $2; exit }')
-  ctx=${ctx:-${OLLAMA_CONTEXT_LENGTH:-4096}}
+  ctx=${ctx:-${OLLAMA_CONTEXT_LENGTH:-${1-4096}}}
   case "$ctx" in *[!0-9]*|"") return 0;; esac
   case "$max" in *[!0-9]*|"") ;; *) [ "$ctx" -gt "$max" ] && ctx=$max ;; esac
   echo "$ctx"
@@ -41,10 +42,17 @@ seat_describe() { echo "ollama ${OLLAMA_REVIEWER_MODEL:-?}, read-only sandbox"; 
 # CODEX_HOME: an empty home in the run directory, so the operator's codex
 # config, MCP servers, plugins, hooks, skills and AGENTS.md do not reach the
 # local model, which then calls tools that do not exist.
+# Context: codex assumes 272k for a model it does not know and never compacts
+# before ollama rejects the request. With a stated served context W it gets W
+# and compacts at 3/4 of it: codex's own 9/10 leaves too little room for a
+# step's tool outputs plus the compaction request. A guessed W is not passed.
 seat_invoke() {
   home="$(dirname "$OUTDIR")/codex-oss-home"
   mkdir -p "$home" || return 1
-  CODEX_HOME="$home" codex exec --oss --local-provider ollama -c model_provider=ollama \
+  set --
+  ctx=$(ollama_ctx "")
+  [ -n "$ctx" ] && set -- -c "model_context_window=$ctx" -c "model_auto_compact_token_limit=$(( ctx * 3 / 4 ))"
+  CODEX_HOME="$home" codex exec --oss --local-provider ollama -c model_provider=ollama "$@" \
     -m "$OLLAMA_REVIEWER_MODEL" -s read-only --skip-git-repo-check -C "$WORKTREE" \
     -o "$OUT" "$PROMPT" >"$LOG" 2>&1
 }

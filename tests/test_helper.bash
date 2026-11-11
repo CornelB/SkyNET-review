@@ -48,7 +48,8 @@ fake_plain() { # $1=name
 #   ok (default) | noverdict (and an error line on stderr) | sleep (streams
 #   to stderr, never finishes)
 # Each call logs "start <oss|cloud>" and "end <oss|cloud>" to $FAKE_LOG and
-# its -m model to $FAKE_LOG.models. `codex app-server` answers the rate-limit
+# its -m model to $FAKE_LOG.models, its -c values to $FAKE_LOG.config.
+# `codex app-server` answers the rate-limit
 # read with a weekly usage of $FAKE_CODEX_WEEK % and a 5h usage of
 # ${FAKE_CODEX_5H:-10} %, or an error when FAKE_CODEX_WEEK is unset.
 fake_codex() {
@@ -71,6 +72,7 @@ while [ $# -gt 0 ]; do
   case "$1" in
     -o) out=$2; shift 2 ;;
     -m) echo "$2" >>"$FAKE_LOG.models"; shift 2 ;;
+    -c) echo "$2" >>"$FAKE_LOG.config"; shift 2 ;;
     --oss) kind=oss; shift ;;
     *) shift ;;
   esac
