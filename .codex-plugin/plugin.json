@@ -1,0 +1,12 @@
+{
+  "name": "review-board",
+  "version": "0.5.7",
+  "description": "Review pull requests and branches through simplicity, functionality, security and maintainability lenses, using local agents or external coding harnesses.",
+  "license": "MIT",
+  "skills": "./skills/",
+  "hooks": "./.codex-plugin/hooks.json",
+  "interface": {
+    "displayName": "Review Board",
+    "shortDescription": "Review changes through four lenses"
+  }
+}
