@@ -34,7 +34,7 @@ Harnesses only, each in its own read-only or plan sandbox, with no approval bypa
 | `claude-cli` | `claude` on PATH and logged in. Fable medium; Opus xhigh when the weekly Fable usage is above 80% |
 | `kimi-cli` | `kimi` and `jq` on PATH |
 | `cursor-cli` | `cursor-agent` on PATH |
-| `codex-oss` | `codex` and `ollama` on PATH and `OLLAMA_REVIEWER_MODEL` set, and the diff fits the model's context; its four runs go one at a time |
+| `codex-oss` | `codex` and `ollama` on PATH and `OLLAMA_REVIEWER_MODEL` set, `OLLAMA_SELECTOR` (when set) does not refuse, and the diff fits the model's context; its four runs go one at a time |
 
 Wall-clock cap per process: 600 s up to 2000 changed lines, 1200 s up to 6000, 1800 s beyond. A timeout that was still producing output gets one retry at twice the cap, once per seat.
 
@@ -80,6 +80,7 @@ While a review runs, a `REVIEW` band above the prompt shows how many lens/seat p
 | Variable | Effect |
 |----------|--------|
 | `OLLAMA_REVIEWER_MODEL` | Enables the `codex-oss` seat with this local ollama model. |
+| `OLLAMA_SELECTOR` | Optional. The absolute path of an executable that names the Ollama server for the `codex-oss` seat: called as `<selector> review <model>` (10 s at most) for discovery and for each lens; prints `host:port` to run there, nothing for the default server, or exits non-zero to skip the seat with its last stderr line as the reason. It must not load, unload or pull models. Shared with skynet delegate (role `coding`); the full contract is in the SkyNET-agents spec `docs/specs/2026-11-20-ollama-selector.md`. |
 | `CURSOR_CLI_MODEL`, `KIMI_CLI_MODEL` | Model for those seats; unset uses the CLI's default. |
 | `CLAUDE_SCRATCHPAD`, `TMPDIR` | Parent of the default run directory, `<dir>/review-board/review-<target>-<ts>/`. |
 | `XDG_STATE_HOME` | Where the run index lives (`review-board/runs.txt`, default `~/.local/state`). |

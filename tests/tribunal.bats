@@ -238,19 +238,6 @@ EOF
   [[ "$output" == *"no run with id review-nope"* ]]
 }
 
-# A fake ollama whose `show` reports a trained context of 131072 and, when
-# FAKE_NUM_CTX is set, that num_ctx parameter.
-fake_ollama_show() {
-  cat >"$FAKEBIN/ollama" <<'EOS'
-#!/usr/bin/env bash
-[ "${1:-}" = show ] || exit 0
-printf '  Model\n    context length      131072\n\n'
-[ -n "${FAKE_NUM_CTX:-}" ] && printf '  Parameters\n    num_ctx        %s\n' "$FAKE_NUM_CTX"
-exit 0
-EOS
-  chmod +x "$FAKEBIN/ollama"
-}
-
 @test "codex-oss is skipped when the diff exceeds the model context" {
   fake_codex; fake_ollama_show
   d=$(prepared_run)
@@ -302,4 +289,23 @@ EOS
   OLLAMA_REVIEWER_MODEL=m FAKE_NUM_CTX=999999 run tribunal start -s codex-oss "$d"
   [ "$status" -eq 3 ]
   [[ "$output" == *"exceeds m context of 131072"* ]]
+}
+
+@test "codex-oss runs every lens on the selected server" {
+  fake_codex; fake_ollama_show; fake_selector 'echo 127.0.0.1:11435'
+  d=$(prepared_run)
+  OLLAMA_REVIEWER_MODEL=m run tribunal run -s codex-oss "$d"
+  [ "$status" -eq 0 ]
+  [ "$(grep -c 'start oss' "$FAKE_LOG")" -eq 4 ]
+  [ "$(grep -cx 'http://127.0.0.1:11435/v1' "$FAKE_LOG.base")" -eq 4 ]
+  ! grep -vqx 'http://127.0.0.1:11435' "$FAKE_LOG.ollama_host"
+}
+
+@test "codex-oss is skipped with the selector's reason" {
+  fake_codex; fake_ollama_show; fake_selector 'echo busy >&2; exit 1'
+  d=$(prepared_run)
+  OLLAMA_REVIEWER_MODEL=m run tribunal run -s codex-oss "$d"
+  [ "$status" -eq 3 ]
+  [[ "$output" == *"codex-oss|busy"* ]]
+  [ ! -s "$FAKE_LOG" ]
 }

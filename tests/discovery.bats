@@ -98,3 +98,76 @@ discover() { "$HOST_BASH" "$SCRIPTS/run-tribunal.sh" discover "$@"; }
   run "$HOST_BASH" "$SCRIPTS/seats/codex.sh" -w "$BATS_TEST_TMPDIR" -p x -o y -t soon
   [ "$status" -eq 2 ]
 }
+
+@test "codex-oss: a selected server is named and checked with ollama show there" {
+  fake_codex; fake_ollama_show; fake_selector 'echo 127.0.0.1:11435'
+  OLLAMA_REVIEWER_MODEL=qwen3-coder run discover -s codex-oss
+  [ "$output" = "codex-oss|available|ollama qwen3-coder @ http://127.0.0.1:11435, read-only sandbox" ]
+  [ "$(cat "$FAKE_LOG.selector")" = "review qwen3-coder" ]
+  grep -qx 'http://127.0.0.1:11435' "$FAKE_LOG.ollama_host"
+}
+
+@test "codex-oss: an empty selector answer keeps the default server" {
+  fake_codex; fake_ollama_show; fake_selector 'exit 0'
+  OLLAMA_REVIEWER_MODEL=qwen3-coder run discover -s codex-oss
+  [ "$output" = "codex-oss|available|ollama qwen3-coder, read-only sandbox" ]
+}
+
+@test "codex-oss: a selector refusal gates the seat with its reason" {
+  fake_codex; fake_ollama_show
+  fake_selector 'echo starting >&2; echo busy >&2; exit 1'
+  OLLAMA_REVIEWER_MODEL=qwen3-coder run discover -s codex-oss
+  [ "$output" = "codex-oss|disabled|busy" ]
+  fake_selector 'exit 3'
+  OLLAMA_REVIEWER_MODEL=qwen3-coder run discover -s codex-oss
+  [ "$output" = "codex-oss|disabled|selector exit 3" ]
+}
+
+@test "codex-oss: a relative or non-executable selector is refused" {
+  fake_codex; fake_ollama_show
+  OLLAMA_SELECTOR=rel/select OLLAMA_REVIEWER_MODEL=qwen3-coder run discover -s codex-oss
+  [ "$output" = "codex-oss|disabled|OLLAMA_SELECTOR not executable" ]
+  printf 'echo x\n' >"$BATS_TEST_TMPDIR/plain"
+  OLLAMA_SELECTOR="$BATS_TEST_TMPDIR/plain" OLLAMA_REVIEWER_MODEL=qwen3-coder run discover -s codex-oss
+  [ "$output" = "codex-oss|disabled|OLLAMA_SELECTOR not executable" ]
+}
+
+@test "codex-oss: a malformed selector answer is refused with the line" {
+  fake_codex; fake_ollama_show; fake_selector 'echo nope'
+  OLLAMA_REVIEWER_MODEL=qwen3-coder run discover -s codex-oss
+  [ "$output" = "codex-oss|disabled|selector printed nope" ]
+}
+
+@test "codex-oss: a reason loses control characters and pipes" {
+  fake_codex; fake_ollama_show
+  fake_selector 'printf "\033[31ma|b\r\n" >&2; exit 1'
+  OLLAMA_REVIEWER_MODEL=qwen3-coder run discover -s codex-oss
+  [ "$output" = "codex-oss|disabled|[31ma/b" ]
+}
+
+@test "codex-oss: a server that cannot show the model is refused" {
+  fake_codex; fake_ollama_show; fake_selector 'echo 127.0.0.1:11435'
+  FAKE_SHOW_FAIL=1 OLLAMA_REVIEWER_MODEL=qwen3-coder run discover -s codex-oss
+  [ "$output" = "codex-oss|disabled|qwen3-coder not served by http://127.0.0.1:11435" ]
+}
+
+@test "codex-oss: a selector over the 10 s cap is refused" {
+  fake_codex; fake_ollama_show; fake_selector 'sleep 30'
+  OLLAMA_REVIEWER_MODEL=qwen3-coder run discover -s codex-oss
+  [ "$output" = "codex-oss|disabled|selector timed out" ]
+}
+
+@test "codex-oss: a background child of the selector does not hold the gate" {
+  fake_codex; fake_ollama_show; fake_selector 'sleep 30 & echo 127.0.0.1:11435'
+  t0=$(date +%s)
+  OLLAMA_REVIEWER_MODEL=qwen3-coder run discover -s codex-oss
+  [ $(( $(date +%s) - t0 )) -lt 5 ]
+  [[ "$output" == "codex-oss|available|"* ]]
+}
+
+@test "codex-oss: without OLLAMA_REVIEWER_MODEL the selector is not asked" {
+  fake_codex; fake_ollama_show; fake_selector 'echo 127.0.0.1:11435'
+  run discover -s codex-oss
+  [ "$output" = "codex-oss|disabled|OLLAMA_REVIEWER_MODEL not set" ]
+  [ ! -e "$FAKE_LOG.selector" ]
+}

@@ -33,7 +33,8 @@ setup_env() {
   mkdir -p "$HOME" "$CLAUDE_SCRATCHPAD"
   unset OLLAMA_REVIEWER_MODEL CURSOR_CLI_MODEL KIMI_CLI_MODEL RC_CAP_SECONDS
   unset RC_CLAUDE_MODEL RC_CLAUDE_EFFORT RC_CODEX_MODEL RC_CODEX_EFFORT RC_CODEX_USAGE
-  unset FAKE_MODE FAKE_CODEX_WEEK
+  unset FAKE_MODE FAKE_CODEX_WEEK FAKE_NUM_CTX FAKE_SHOW_FAIL
+  unset OLLAMA_SELECTOR OLLAMA_HOST CODEX_OSS_BASE_URL
 }
 
 setup() { setup_env; }
@@ -48,7 +49,8 @@ fake_plain() { # $1=name
 #   ok (default) | noverdict (and an error line on stderr) | sleep (streams
 #   to stderr, never finishes)
 # Each call logs "start <oss|cloud>" and "end <oss|cloud>" to $FAKE_LOG and
-# its -m model to $FAKE_LOG.models, its -c values to $FAKE_LOG.config.
+# its -m model to $FAKE_LOG.models, its -c values to $FAKE_LOG.config,
+# its CODEX_OSS_BASE_URL (when set) to $FAKE_LOG.base.
 # `codex app-server` answers the rate-limit
 # read with a weekly usage of $FAKE_CODEX_WEEK % and a 5h usage of
 # ${FAKE_CODEX_5H:-10} %, or an error when FAKE_CODEX_WEEK is unset.
@@ -77,6 +79,7 @@ while [ $# -gt 0 ]; do
     *) shift ;;
   esac
 done
+[ -n "${CODEX_OSS_BASE_URL:-}" ] && echo "$CODEX_OSS_BASE_URL" >>"$FAKE_LOG.base"
 echo "start $kind" >>"$FAKE_LOG"
 case "${FAKE_MODE:-ok}" in
   ok) sleep "${FAKE_SLEEP:-0}"
@@ -87,6 +90,30 @@ esac
 echo "end $kind" >>"$FAKE_LOG"
 EOF
   chmod +x "$FAKEBIN/codex"
+}
+
+# A fake ollama whose `show` reports a trained context of 131072 and, when
+# FAKE_NUM_CTX is set, that num_ctx parameter; FAKE_SHOW_FAIL=1 makes `show`
+# fail. Each call logs its OLLAMA_HOST (when set) to $FAKE_LOG.ollama_host.
+fake_ollama_show() {
+  cat >"$FAKEBIN/ollama" <<'EOS'
+#!/usr/bin/env bash
+[ -n "${OLLAMA_HOST:-}" ] && echo "$OLLAMA_HOST" >>"$FAKE_LOG.ollama_host"
+[ "${1:-}" = show ] || exit 0
+[ -n "${FAKE_SHOW_FAIL:-}" ] && exit 1
+printf '  Model\n    context length      131072\n\n'
+[ -n "${FAKE_NUM_CTX:-}" ] && printf '  Parameters\n    num_ctx        %s\n' "$FAKE_NUM_CTX"
+exit 0
+EOS
+  chmod +x "$FAKEBIN/ollama"
+}
+
+# An OLLAMA_SELECTOR script with the given body. Each call logs its argv to
+# $FAKE_LOG.selector.
+fake_selector() { # $1=body
+  printf '#!/usr/bin/env bash\necho "$*" >>"%s"\n%s\n' "$FAKE_LOG.selector" "$1" >"$BATS_TEST_TMPDIR/select"
+  chmod +x "$BATS_TEST_TMPDIR/select"
+  export OLLAMA_SELECTOR="$BATS_TEST_TMPDIR/select"
 }
 
 # A fake claude whose auth check passes.

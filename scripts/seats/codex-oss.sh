@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 # codex-oss seat: Codex CLI driving a local ollama model, read-only sandbox.
 # Contract: lib/seat.sh. Gate: codex AND ollama on PATH AND
-# OLLAMA_REVIEWER_MODEL set AND, when the launcher names the run's diff in
+# OLLAMA_REVIEWER_MODEL set AND OLLAMA_SELECTOR (when set) names a server
+# that serves the model AND, when the launcher names the run's diff in
 # RC_DIFF_FILE, the diff fits the model's context. The launcher runs this
 # seat's four lenses one at a time: a local model serves one request well,
 # four badly.
@@ -22,10 +23,54 @@ ollama_ctx() {
   echo "$ctx"
 }
 
+# One line of selector output fit for a status line and status.json: control
+# characters removed, "|" (the status line separator) turned into "/", the
+# last non-empty line, at most 300 characters.
+ollama_reason() {
+  printf '%s\n' "$1" | tr -d '\000-\010\013-\037\177' | tr '|' '/' \
+    | awk 'NF{l=$0} END{print substr(l, 1, 300)}'
+}
+
+# OLLAMA_SELECTOR names the Ollama server for this seat's model. Contract:
+# SkyNET-agents docs/specs/2026-11-20-ollama-selector.md. Unset: nothing runs.
+# A server: exports OLLAMA_HOST and CODEX_OSS_BASE_URL (codex reads only the
+# latter) and RC_OLLAMA_URL. A refusal: GATE_REASON, return 1. stdout and
+# stderr go to files, so a child the selector leaves behind cannot hold the
+# gate.
+ollama_select() {
+  [ -n "${OLLAMA_SELECTOR:-}" ] || return 0
+  case "$OLLAMA_SELECTOR" in /*) ;; *) GATE_REASON="OLLAMA_SELECTOR not executable"; return 1 ;; esac
+  [ -f "$OLLAMA_SELECTOR" ] && [ -x "$OLLAMA_SELECTOR" ] \
+    || { GATE_REASON="OLLAMA_SELECTOR not executable"; return 1; }
+  sel_out=$(mktemp) sel_err=$(mktemp)
+  rc_run_capped 10 "$OLLAMA_SELECTOR" review "$OLLAMA_REVIEWER_MODEL" </dev/null >"$sel_out" 2>"$sel_err"
+  sel_rc=$?
+  sel_line=$(head -n 1 "$sel_out" | tr -d '\r' | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//')
+  sel_stderr=$(cat "$sel_err")
+  rm -f "$sel_out" "$sel_err"
+  if [ "$sel_rc" -eq 124 ]; then GATE_REASON="selector timed out"; return 1; fi
+  if [ "$sel_rc" -gt 128 ]; then GATE_REASON="selector killed by signal $((sel_rc - 128))"; return 1; fi
+  if [ "$sel_rc" -ne 0 ]; then
+    GATE_REASON=$(ollama_reason "$sel_stderr")
+    [ -n "$GATE_REASON" ] || GATE_REASON="selector exit $sel_rc"
+    return 1
+  fi
+  [ -n "$sel_line" ] || return 0
+  printf '%s\n' "$sel_line" | grep -Eq '^(http://)?[A-Za-z0-9._-]+:[0-9]+/?$' \
+    || { GATE_REASON=$(ollama_reason "selector printed $sel_line"); return 1; }
+  sel_line=${sel_line#http://}; sel_line=${sel_line%/}
+  RC_OLLAMA_URL="http://$sel_line"
+  export OLLAMA_HOST="$RC_OLLAMA_URL" CODEX_OSS_BASE_URL="$RC_OLLAMA_URL/v1"
+  ollama show "$OLLAMA_REVIEWER_MODEL" >/dev/null 2>&1 \
+    || { GATE_REASON=$(ollama_reason "$OLLAMA_REVIEWER_MODEL not served by $RC_OLLAMA_URL"); return 1; }
+  return 0
+}
+
 seat_gate() {
   command -v codex >/dev/null 2>&1 || { GATE_REASON="codex not on PATH"; return 1; }
   command -v ollama >/dev/null 2>&1 || { GATE_REASON="ollama not on PATH"; return 1; }
   [ -n "${OLLAMA_REVIEWER_MODEL:-}" ] || { GATE_REASON="OLLAMA_REVIEWER_MODEL not set"; return 1; }
+  ollama_select || return 1
   [ -f "${RC_DIFF_FILE:-}" ] || return 0
   ctx=$(ollama_ctx); [ -n "$ctx" ] || return 0
   # About 4 bytes per token.
@@ -35,7 +80,7 @@ seat_gate() {
   return 0
 }
 
-seat_describe() { echo "ollama ${OLLAMA_REVIEWER_MODEL:-?}, read-only sandbox"; }
+seat_describe() { echo "ollama ${OLLAMA_REVIEWER_MODEL:-?}${RC_OLLAMA_URL:+ @ $RC_OLLAMA_URL}, read-only sandbox"; }
 
 # model_provider=ollama: --oss alone leaves the turn on the openai provider,
 # and codex 0.166 refuses it with modelProviderMismatch, even in an empty home.
