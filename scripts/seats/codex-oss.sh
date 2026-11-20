@@ -43,16 +43,22 @@ ollama_select() {
   [ -f "$OLLAMA_SELECTOR" ] && [ -x "$OLLAMA_SELECTOR" ] \
     || { GATE_REASON="OLLAMA_SELECTOR not executable"; return 1; }
   sel_out=$(mktemp) sel_err=$(mktemp)
-  rc_run_capped 10 "$OLLAMA_SELECTOR" review "$OLLAMA_REVIEWER_MODEL" </dev/null >"$sel_out" 2>"$sel_err"
+  RC_CAP_SIGNAL=KILL rc_run_capped 10 "$OLLAMA_SELECTOR" review "$OLLAMA_REVIEWER_MODEL" </dev/null >"$sel_out" 2>"$sel_err"
   sel_rc=$?
   sel_line=$(head -n 1 "$sel_out" | tr -d '\r' | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//')
   sel_stderr=$(cat "$sel_err")
   rm -f "$sel_out" "$sel_err"
   if [ "$sel_rc" -eq 124 ]; then GATE_REASON="selector timed out"; return 1; fi
-  if [ "$sel_rc" -gt 128 ]; then GATE_REASON="selector killed by signal $((sel_rc - 128))"; return 1; fi
   if [ "$sel_rc" -ne 0 ]; then
+    # An exit code above 128 can be a plain exit (ssh exits 255): the stderr
+    # line wins; only a silent one reads as a signal.
     GATE_REASON=$(ollama_reason "$sel_stderr")
-    [ -n "$GATE_REASON" ] || GATE_REASON="selector exit $sel_rc"
+    [ -n "$GATE_REASON" ] && return 1
+    if [ "$sel_rc" -gt 128 ] && sel_sig=$(kill -l "$((sel_rc - 128))" 2>/dev/null); then
+      GATE_REASON="selector killed by SIG${sel_sig#SIG}"
+    else
+      GATE_REASON="selector exit $sel_rc"
+    fi
     return 1
   fi
   [ -n "$sel_line" ] || return 0

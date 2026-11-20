@@ -171,3 +171,20 @@ discover() { "$HOST_BASH" "$SCRIPTS/run-tribunal.sh" discover "$@"; }
   [ "$output" = "codex-oss|disabled|OLLAMA_REVIEWER_MODEL not set" ]
   [ ! -e "$FAKE_LOG.selector" ]
 }
+
+@test "codex-oss: a selector that ignores SIGTERM is still stopped at the cap" {
+  fake_codex; fake_ollama_show; fake_selector 'trap "" TERM; sleep 25'
+  t0=$(date +%s)
+  OLLAMA_REVIEWER_MODEL=qwen3-coder run discover -s codex-oss
+  [ $(( $(date +%s) - t0 )) -lt 15 ]
+  [ "$output" = "codex-oss|disabled|selector timed out" ]
+}
+
+@test "codex-oss: an exit code above 128 keeps the stderr reason" {
+  fake_codex; fake_ollama_show; fake_selector 'echo "ssh: no route" >&2; exit 255'
+  OLLAMA_REVIEWER_MODEL=qwen3-coder run discover -s codex-oss
+  [ "$output" = "codex-oss|disabled|ssh: no route" ]
+  fake_selector 'kill -TERM $$'
+  OLLAMA_REVIEWER_MODEL=qwen3-coder run discover -s codex-oss
+  [ "$output" = "codex-oss|disabled|selector killed by SIGTERM" ]
+}

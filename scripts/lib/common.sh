@@ -86,21 +86,22 @@ rc_bytes() { b=$( { wc -c <"$1"; } 2>/dev/null | tr -cd '0-9'); echo "${b:-0}"; 
 # Kill a process and every descendant. A seat runs its CLI inside a function,
 # a pipeline or a namespace wrapper, so killing only the direct child would
 # leave the CLI running.
-rc_kill_tree() { # $1=pid
-  for c in $(pgrep -P "$1" 2>/dev/null); do rc_kill_tree "$c"; done
-  kill "$1" 2>/dev/null
+rc_kill_tree() { # $1=pid [$2=signal, default TERM]
+  for c in $(pgrep -P "$1" 2>/dev/null); do rc_kill_tree "$c" "${2:-TERM}"; done
+  kill -s "${2:-TERM}" "$1" 2>/dev/null
 }
 
 # Run "$@" with a wall-clock cap. Exit 124 on cap. No GNU timeout needed.
 # The watchdog leaves a marker before it kills, so a CLI that traps SIGTERM
-# and exits 1 still reads as a timeout.
+# and exits 1 still reads as a timeout. RC_CAP_SIGNAL=KILL for a command that
+# may ignore SIGTERM and has nothing to flush.
 rc_run_capped() { # $1=seconds, rest=command
   rc_secs=$1; shift
   rc_flag="${TMPDIR:-/tmp}/rc-cap.$$.$RANDOM"
   rm -f "$rc_flag"
   "$@" & rc_cpid=$!
   ( i=0; while [ "$i" -lt "$rc_secs" ]; do sleep 1; kill -0 "$rc_cpid" 2>/dev/null || exit 0; i=$((i + 1)); done
-    : >"$rc_flag"; rc_kill_tree "$rc_cpid" ) & rc_wpid=$!
+    : >"$rc_flag"; rc_kill_tree "$rc_cpid" "${RC_CAP_SIGNAL:-TERM}" ) & rc_wpid=$!
   wait "$rc_cpid" 2>/dev/null; rc_rc=$?
   rc_kill_tree "$rc_wpid"; wait "$rc_wpid" 2>/dev/null
   if [ -e "$rc_flag" ]; then rm -f "$rc_flag"; return 124; fi
