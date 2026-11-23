@@ -83,6 +83,7 @@ The same run also opens a `Review` side pane when it starts: the run's line, the
 |----------|--------|
 | `OLLAMA_REVIEWER_MODEL` | Enables the `codex-oss` seat with this local ollama model. |
 | `OLLAMA_SELECTOR` | Optional. The absolute path of an executable that names the Ollama server for the `codex-oss` seat: called as `<selector> review <model>` (10 s at most) for discovery and for each lens; prints `host:port` to run there, nothing for the default server, or exits non-zero to skip the seat with its last stderr line as the reason. It must not load, unload or pull models. Shared with skynet delegate (role `coding`); the full contract is in the SkyNET-agents spec `docs/specs/2026-11-20-ollama-selector.md`. |
+| `REVIEW_BOARD_DISABLED_SEATS` | Seats turned off on this machine, separated by commas or spaces (e.g. `grok`). They show as disabled and never run. `codex` and `codex-oss` are separate names. Set it as an environment variable, e.g. in the `env` block of `~/.claude/settings.json` (new sessions only). |
 | `CURSOR_CLI_MODEL`, `KIMI_CLI_MODEL` | Model for those seats; unset uses the CLI's default. |
 | `CLAUDE_SCRATCHPAD`, `TMPDIR` | Parent of the default run directory, `<dir>/review-board/review-<target>-<ts>/`. |
 | `XDG_STATE_HOME` | Where the run index lives (`review-board/runs.txt`, default `~/.local/state`). |

@@ -199,6 +199,18 @@ EOF
   grep -q '"cap":1' "$d/status.json"
 }
 
+@test "a turned-off codex seat reads no usage and prints no codex model" {
+  fake_codex; fake_plain agy
+  d=$(prepared_run)
+  FAKE_CODEX_WEEK=12 REVIEW_BOARD_DISABLED_SEATS=codex run tribunal start -s codex,antigravity "$d"
+  [ "$status" -eq 0 ]
+  [[ "$output" != *codex-model* ]]
+  [[ "$output" != *'"codex_model"'* ]]
+  run tribunal wait "$d"
+  ! grep -q codex_model "$d/status.json" || grep -q '"codex_model":""' "$d/status.json"
+  grep -q 'turned off by REVIEW_BOARD_DISABLED_SEATS' "$d/status.json"
+}
+
 @test "start detaches, wait reports the end, runs.sh lists and shows it" {
   fake_codex
   d=$(prepared_run)

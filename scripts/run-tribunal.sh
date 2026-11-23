@@ -29,6 +29,8 @@
 #     removes the PR worktree.
 #
 #   -s  restrict to these seats (comma-separated; default all available)
+#   REVIEW_BOARD_DISABLED_SEATS  seats turned off on this machine (commas or
+#       spaces); discover shows them disabled, run skips them
 #   -m  claude-cli model, -e claude-cli effort: the Claude model rule the
 #       orchestrator applied (default Fable medium: the weekly Fable usage
 #       that downgrades it is measured by the session, not here)
@@ -85,6 +87,16 @@ RUN_DIR=${1:-}
 for s in $ONLY; do
   case " $RC_SEATS " in *" $s "*) ;; *) die "unknown seat: $s (valid: $RC_SEATS)";; esac
 done
+# A typo in the turned-off list would leave the seat running unnoticed: warn
+# (seat stderr is dropped in discover, so here). No glob expansion of the value.
+case "$CMD" in discover|start)
+  set -f
+  for s in $(rc_off_list); do
+    case " $RC_SEATS " in *" $s "*) ;; *) echo "run-tribunal.sh: REVIEW_BOARD_DISABLED_SEATS names an unknown seat: $s (valid: $RC_SEATS)" >&2;; esac
+  done
+  set +f
+  ;;
+esac
 
 # Seats asked for, in canonical order.
 requested_seats() {
@@ -101,6 +113,7 @@ requested_seats() {
 pick_codex() {
   [ -z "${RC_CODEX_MODEL:-}" ] || return 0
   case " $(requested_seats) " in *" codex "*) ;; *) return 0;; esac
+  rc_seat_off codex && return 0
   command -v codex >/dev/null 2>&1 || return 0
   IFS='|' read -r RC_CODEX_MODEL RC_CODEX_EFFORT RC_CODEX_USAGE RC_CODEX_FULL <<EOF
 $(rc_codex_pick)

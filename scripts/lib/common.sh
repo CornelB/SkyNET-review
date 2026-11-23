@@ -10,6 +10,19 @@ RC_LENSES="simplicity functionality security maintainability"
 # shellcheck disable=SC2034
 RC_SEATS="codex antigravity grok claude-cli kimi-cli cursor-cli codex-oss"
 
+# Seats the user turned off on this machine: REVIEW_BOARD_DISABLED_SEATS,
+# names separated by commas or whitespace, case-insensitive. A turned-off
+# seat is never probed or launched.
+# shellcheck disable=SC2034
+RC_OFF_REASON="turned off by REVIEW_BOARD_DISABLED_SEATS"
+rc_off_list() {
+  printf '%s' "${REVIEW_BOARD_DISABLED_SEATS:-}" | tr ',\t\n' '   ' | tr '[:upper:]' '[:lower:]'
+}
+rc_seat_off() { # $1=seat
+  case " $(rc_off_list) " in *" $1 "*) return 0;; esac
+  return 1
+}
+
 # Lines added or removed in a unified diff, headers excluded. A removed line
 # whose text starts with "-- " shows as "--- " and must still count, so file
 # headers are recognized by position (between "diff --git" and the first

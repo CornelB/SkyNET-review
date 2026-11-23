@@ -27,6 +27,33 @@ discover() { "$HOST_BASH" "$SCRIPTS/run-tribunal.sh" discover "$@"; }
   done
 }
 
+@test "a seat in REVIEW_BOARD_DISABLED_SEATS is disabled, the others are not" {
+  fake_plain agy; fake_plain grok; fake_plain kimi
+  REVIEW_BOARD_DISABLED_SEATS="Kimi-CLI, grok" run discover
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"grok|disabled|turned off by REVIEW_BOARD_DISABLED_SEATS"* ]]
+  [[ "$output" == *"kimi-cli|disabled|turned off by REVIEW_BOARD_DISABLED_SEATS"* ]]
+  [[ "$output" == *"antigravity|available|"* ]]
+}
+
+@test "REVIEW_BOARD_DISABLED_SEATS: an unknown name warns and changes nothing" {
+  fake_plain grok
+  REVIEW_BOARD_DISABLED_SEATS="gork *" run discover -s grok
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"unknown seat: gork"* ]]
+  [[ "$output" == *"unknown seat: *"* ]]
+  [[ "$output" == *"grok|available|"* ]]
+}
+
+@test "a turned-off seat skips its run and never starts the CLI" {
+  printf '#!/usr/bin/env bash\necho start >>"$FAKE_LOG"\n' >"$FAKEBIN/grok"
+  chmod +x "$FAKEBIN/grok"
+  REVIEW_BOARD_DISABLED_SEATS=grok run "$HOST_BASH" "$SCRIPTS/seats/grok.sh" -w "$BATS_TEST_TMPDIR" -p "$BATS_TEST_DIRNAME/test_helper.bash" -o "$BATS_TEST_TMPDIR/r.md" -t 5
+  [ "$status" -eq 0 ]
+  [ "$output" = "grok|skipped|turned off by REVIEW_BOARD_DISABLED_SEATS" ]
+  [ ! -e "$FAKE_LOG" ]
+}
+
 @test "codex-oss: codex alone is not enough" {
   fake_codex
   run discover -s codex-oss

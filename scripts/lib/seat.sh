@@ -21,6 +21,8 @@
 #   <seat>.sh -c
 #     Discovery: <seat>|available|<model, sandbox> (exit 0) or
 #     <seat>|disabled|<reason> (exit 1). Runs nothing but the gate.
+#   A seat named in REVIEW_BOARD_DISABLED_SEATS is disabled (discovery) or
+#   skipped (run) before its gate runs.
 #
 # Every CLI flag lives in the seat script. No approval bypass flags, no
 # passthrough: nothing from the invocation reaches the CLI except the
@@ -41,12 +43,13 @@ seat_main() {
       o) OUT=$OPTARG ;;
       t) CAP=$OPTARG ;;
       c) CHECK=1 ;;
-      h) sed -n '2,30p' "$SEAT_LIB_DIR/seat.sh"; exit 0 ;;
+      h) sed -n '2,/^$/p' "$SEAT_LIB_DIR/seat.sh"; exit 0 ;;
       *) seat_die "unknown flag; run with -h" ;;
     esac
   done
 
   if [ "$CHECK" -eq 1 ]; then
+    if rc_seat_off "$SEAT"; then echo "$SEAT|disabled|$RC_OFF_REASON"; exit 1; fi
     if seat_gate; then echo "$SEAT|available|$(seat_describe)"; exit 0; fi
     echo "$SEAT|disabled|$GATE_REASON"; exit 1
   fi
@@ -67,6 +70,7 @@ seat_main() {
   PROMPT=$(cat "$PROMPT_FILE") || seat_die "cannot read $PROMPT_FILE"
   [ -n "$PROMPT" ] || seat_die "prompt file is empty: $PROMPT_FILE"
 
+  if rc_seat_off "$SEAT"; then echo "$SEAT|skipped|$RC_OFF_REASON"; exit 0; fi
   if ! seat_gate; then echo "$SEAT|skipped|$GATE_REASON"; exit 0; fi
 
   : >"$OUT"; : >"$LOG"
