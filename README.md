@@ -75,6 +75,8 @@ Targets: PR number or URL, or a branch. Nothing named: the current branch, that 
 
 While a review runs, a `REVIEW` band above the prompt shows how many lens/seat processes finished (`2 of 16`, or `1 of 4` lens subagents in local mode), a line that fills with them, the run's clock and the latest process to end. Under that line it shows one row per seat (`local` in local mode) with the seat's model, its lenses done and its clock; each failed lens shows its reason and, for a tribunal, the last line of its log. When the run ends the band says how many reports came back ok for 20 seconds. The band is a Claude Code mod (`mods/review-band/`, loaded through `hooks/hooks.json`); for a tribunal it reads the run's `status.json` once a second, in local mode it follows the lens subagents from their start to the end of their turn, and it draws nothing when no review is live.
 
+The same run also opens a `Review` side pane when it starts: the run's line, then each seat with one row per lens (its status and clock, and for a failed lens its reason and error). The pane keeps the last run's view, clocks stopped, until you close it or the next run starts. The band's `o · open pane` button reopens it.
+
 ## Environment
 
 | Variable | Effect |
@@ -97,7 +99,7 @@ A run directory holds `run.json`, `diff.patch`, `pr-body.md` (PR), `scope.md`, `
 - `scripts/prepare-run.sh` - run directory, scope and prompt assembly. `scripts/pr-worktree.sh` - PR worktree.
 - `scripts/run-tribunal.sh` - seat discovery and the detached tribunal. `scripts/runs.sh` - run listing.
 - `scripts/seats/<seat>.sh` - one per seat; every CLI flag lives there.
-- `mods/review-band/` - the progress band above the prompt. `bun test` in that folder runs its tests. To type-check it, copy `types/claude-code.d.ts` from Claude Code's plugin-authoring skill (its path is printed when the skill loads) to `.claude/types/` at the repo root (gitignored), then run `bunx -p typescript tsc -p mods/review-band`.
+- `mods/review-band/` - the progress band above the prompt and the `Review` side pane. `bun test` in that folder runs its tests. To type-check it, copy `types/claude-code.d.ts` from Claude Code's plugin-authoring skill (its path is printed when the skill loads) to `.claude/types/` at the repo root (gitignored), then run `bunx -p typescript tsc -p mods/review-band`.
 - `tests/` - bats suite with fake CLIs. `bats tests`, `shellcheck` and the band's `bun test` run in CI on every push.
 
 ## Credits

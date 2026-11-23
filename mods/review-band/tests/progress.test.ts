@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'bun:test'
-import { abandonedNotice, band, finishNotice, latestEvent, lensOf, localStatus, parseStatus, seatRows, tribunalRunDir } from '../hooks/progress'
+import { abandonedNotice, band, finishNotice, latestEvent, lensOf, lensRows, localStatus, parseStatus, seatRows, tribunalRunDir } from '../hooks/progress'
 
 const DIR = '/tmp/x/review-board/review-pr-508-20261016-182522'
 
@@ -107,5 +107,24 @@ describe('seatRows', () => {
       seat: 'local', model: 'claude-fable-5-1', state: 'running', count: '1 of 2', clock: '0:30',
       failures: [{ lens: 'simplicity', reason: 'failed: refusal', error: 'declined' }],
     }])
+  })
+})
+
+describe('lensRows', () => {
+  const started = '2026-10-16T15:25:22Z'
+  const at = (secs: number) => Date.parse(started) + secs * 1000
+  test('one row per lens: live clock, stopped clock, failure reason and error', () => {
+    const local = localStatus([
+      { lens: 'security', seat: 'local', status: 'running' },
+      { lens: 'functionality', seat: 'local', status: 'ok', ended: '2026-10-16T15:26:22Z' },
+      { lens: 'simplicity', seat: 'local', status: 'failed', detail: 'refusal', error: 'declined', ended: '2026-10-16T15:25:32Z' },
+      { lens: 'maintainability', seat: 'local', status: 'ok' },
+    ], started)
+    expect(lensRows(local, 0, at(90))).toEqual([
+      { seat: 'local', lens: 'security', state: 'running', word: 'running', clock: '1:30' },
+      { seat: 'local', lens: 'functionality', state: 'ok', word: 'ok', clock: '1:00' },
+      { seat: 'local', lens: 'simplicity', state: 'failed', word: 'failed: refusal', clock: '0:10', error: 'declined' },
+      { seat: 'local', lens: 'maintainability', state: 'ok', word: 'ok', clock: '' },
+    ])
   })
 })

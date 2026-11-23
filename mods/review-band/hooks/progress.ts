@@ -88,6 +88,29 @@ export function seatRows(status: RunStatus, followedSinceMs: number, nowMs: numb
   })
 }
 
+export type LensRow = { seat: string; lens: string; state: 'running' | 'ok' | 'failed'; word: string; clock: string; error?: string }
+
+// One row per lens/seat cell for the pane, in the order the cells come. Its
+// clock counts from the run's start to the cell's end, or to now while it
+// runs; a cell that ended with no end time shows no clock.
+export function lensRows(status: RunStatus, followedSinceMs: number, nowMs: number): LensRow[] {
+  const startedMs = Date.parse(status.started)
+  const fromMs = Number.isNaN(startedMs) ? followedSinceMs : startedMs
+  return status.cells.map(c => {
+    const state = c.status === 'running' ? 'running' : c.status === 'ok' ? 'ok' : 'failed'
+    const endedMs = Date.parse(c.ended ?? '')
+    const shownClock = state === 'running' ? clock(fromMs, nowMs) : Number.isNaN(endedMs) ? '' : clock(fromMs, endedMs)
+    return {
+      seat: c.seat,
+      lens: c.lens,
+      state,
+      word: `${c.status}${state === 'failed' && c.detail ? `: ${c.detail}` : ''}`,
+      clock: shownClock,
+      ...(c.error ? { error: c.error } : {}),
+    }
+  })
+}
+
 // The lens a local-mode subagent reviews for, from the agent type it was
 // spawned as (`review-board:security-reviewer`); undefined for any other agent.
 export function lensOf(subagentType: string): string | undefined {

@@ -1,7 +1,10 @@
-// ABOUTME: Hooks module that draws a live review run's progress in a band above the prompt
-// ABOUTME: Follows a tribunal's status.json or the local lens subagents into one status, drawn as a row per seat with failed lenses' errors
+// ABOUTME: Hooks module that draws a live review run's progress in a band above the prompt and in a side pane
+// ABOUTME: Follows a tribunal's status.json or the local lens subagents into one status, drawn as a row per seat (band) and per lens (pane)
 import type { Elements, EngineInterface, Register, Timer } from 'claude-code'
-import { abandonedNotice, band, finishNotice, isLive, latestEvent, lensOf, localStatus, parseStatus, seatRows, tribunalRunDir, type Cell, type RunStatus } from './progress'
+import { abandonedNotice, band, finishNotice, isLive, latestEvent, lensOf, lensRows, localStatus, parseStatus, seatRows, tribunalRunDir, type Cell, type RunStatus } from './progress'
+
+const PANE_ID = 'review-board'
+const PANE_TITLE = 'Review'
 
 const POLL_MS = 1000
 const PID_CHECK_MS = 5000
@@ -25,7 +28,14 @@ const GLYPH = {
 type Source = { runDir: string } | { agents: Map<string, Cell>; started: string }
 type Follow = { source: Source; sinceMs: number; status?: RunStatus; event?: string; pidCheckedAtMs: number }
 type Notice = { text: string; isFailure: boolean; untilMs: number }
-type BandState = { run?: Follow; finished?: Notice; ended: Set<string>; timer?: Timer; nowMs: number }
+// The pane keeps the last run's view after it ends, its clocks stopped, until
+// the person closes it or the next run replaces it.
+type PaneView = { status?: RunStatus; sinceMs: number; endedMs?: number; notice?: { text: string; isFailure: boolean } }
+type BandState = { run?: Follow; finished?: Notice; pane?: PaneView; ended: Set<string>; timer?: Timer; nowMs: number }
+
+function openPane($: EngineInterface): void {
+  void $.ui.open({ id: PANE_ID, title: PANE_TITLE }).catch((err: unknown) => $.ui.log(`review pane: ${String(err)}`))
+}
 
 async function readStatus($: EngineInterface, runDir: string): Promise<RunStatus | undefined> {
   const path = `${runDir}/status.json`
@@ -62,6 +72,10 @@ function end(state: BandState, run: Follow, text: string, isFailure: boolean): v
   if ('runDir' in run.source) state.ended.add(run.source.runDir)
   state.run = undefined
   state.finished = { text, isFailure, untilMs: state.nowMs + FINISH_NOTICE_MS }
+  if (state.pane) {
+    state.pane.endedMs = state.nowMs
+    state.pane.notice = { text, isFailure }
+  }
 }
 
 async function poll($: EngineInterface, state: BandState): Promise<void> {
@@ -74,6 +88,7 @@ async function poll($: EngineInterface, state: BandState): Promise<void> {
     if (status) {
       run.event = latestEvent(run.status?.cells, status.cells) ?? run.event
       run.status = status
+      if (state.pane) state.pane.status = status
       if (!isLive(status)) {
         const notice = finishNotice(status)
         end(state, run, notice.text, notice.isFailure)
@@ -103,6 +118,8 @@ function watch($: EngineInterface, state: BandState, source: Source): Follow {
   const run = { source, sinceMs: state.nowMs, pidCheckedAtMs: state.nowMs }
   state.run = run
   state.finished = undefined
+  state.pane = { sinceMs: state.nowMs }
+  openPane($)
   if (!state.timer) state.timer = $.clock.every(POLL_MS, () => { void poll($, state) })
   return run
 }
@@ -173,6 +190,8 @@ export const register: Register = on => {
           {chip(ui)}
           <ui.Text bold {...(finished.isFailure ? { color: COLOR.danger } : {})}>{` ${finished.isFailure ? '✗' : '✓'} ${finished.text}  `}</ui.Text>
           <ui.Button key="finished:dismiss" hotkey="x" label={'x · dismiss'} onPress={() => { state.finished = undefined; $.ui.invalidate('ui.render') }} />
+          <ui.Text>{'  '}</ui.Text>
+          <ui.Button key="finished:open" hotkey="o" label={'o · open pane'} onPress={() => openPane($)} />
         </ui.Box>
       )
     }
@@ -203,6 +222,7 @@ export const register: Register = on => {
           <ui.Box flexGrow={1} flexShrink={1}>
             <ui.Text dimColor wrap="truncate-end">{`  ${shown.event ?? ''}  `}</ui.Text>
           </ui.Box>
+          <ui.Button key="progress:open" hotkey="o" label={'o · open pane'} onPress={() => openPane($)} />
         </ui.Box>
         {rows.map(row => (
           <ui.Box key={`seat:${row.seat}`} flexDirection="column">
@@ -215,6 +235,60 @@ export const register: Register = on => {
               <ui.Box key={`seat:${row.seat}:${f.lens}`} flexDirection="column">
                 <ui.Text color={COLOR.danger} wrap="wrap">{`      ✗ ${f.lens} · ${f.reason}`}</ui.Text>
                 {f.error ? <ui.Text wrap="wrap">{`        ${f.error}`}</ui.Text> : null}
+              </ui.Box>
+            ))}
+          </ui.Box>
+        ))}
+      </ui.Box>
+    )
+  })
+
+  // The pane: the run's line, then each seat with one row per lens, its
+  // status, its clock and, for a failed lens, its reason and error.
+  on('ui.render', { component: 'Pane', requestId: PANE_ID }, ($, e) => {
+    const ui = $.ui.resolve(e)
+    const view = state.pane
+    if (!view) return <ui.Text dimColor>{'No review run in this session yet.'}</ui.Text>
+    const status = view.status
+    const nowMs = view.endedMs ?? state.nowMs
+    const notice = view.notice
+    const head = status ? band(status, view.sinceMs, nowMs) : undefined
+    const seats = status ? seatRows(status, view.sinceMs, nowMs) : []
+    const lenses = status ? lensRows(status, view.sinceMs, nowMs) : []
+    const lensWidth = Math.max(0, ...lenses.map(l => l.lens.length))
+    const wordWidth = Math.max(0, ...lenses.map(l => (l.state === 'failed' ? 0 : l.word.length)))
+    return (
+      <ui.Box key="pane" flexDirection="column" width={e.props.bodyColumns}>
+        <ui.Box key="pane:line" flexDirection="row">
+          {chip(ui)}
+          {head ? (
+            <ui.Text>
+              <ui.Text bold>{`  ${head.count}`}</ui.Text>
+              <ui.Text color={COLOR.accent}>{`  ${head.bar}`}</ui.Text>
+              <ui.Text bold {...(view.endedMs === undefined ? { color: COLOR.warning } : { dimColor: true })}>{`  ${view.endedMs === undefined ? '● ' : ''}${head.clock}`}</ui.Text>
+            </ui.Text>
+          ) : <ui.Text dimColor>{'  starting…'}</ui.Text>}
+        </ui.Box>
+        {notice ? (
+          <ui.Text key="pane:notice" bold wrap="wrap" {...(notice.isFailure ? { color: COLOR.danger } : { color: COLOR.success })}>{`${notice.isFailure ? '✗' : '✓'} ${notice.text}`}</ui.Text>
+        ) : null}
+        {seats.map(seat => (
+          <ui.Box key={`pane:seat:${seat.seat}`} flexDirection="column" marginTop={1}>
+            <ui.Text wrap="truncate-end">
+              <ui.Text color={GLYPH[seat.state].color}>{`${GLYPH[seat.state].mark} `}</ui.Text>
+              <ui.Text bold>{seat.seat}</ui.Text>
+              <ui.Text dimColor>{`  ${seat.model}  ${seat.count}  ${seat.clock}`}</ui.Text>
+            </ui.Text>
+            {lenses.filter(l => l.seat === seat.seat).map(l => (
+              <ui.Box key={`pane:lens:${seat.seat}:${l.lens}`} flexDirection="column">
+                <ui.Text wrap="truncate-end">
+                  <ui.Text color={GLYPH[l.state].color}>{`  ${GLYPH[l.state].mark} `}</ui.Text>
+                  <ui.Text>{l.lens.padEnd(lensWidth)}</ui.Text>
+                  {l.state === 'failed' ? null : <ui.Text dimColor>{`  ${l.word.padEnd(wordWidth)}`}</ui.Text>}
+                  <ui.Text dimColor>{`  ${l.clock}`}</ui.Text>
+                </ui.Text>
+                {l.state === 'failed' ? <ui.Text color={COLOR.danger} wrap="wrap">{`      ${l.word}`}</ui.Text> : null}
+                {l.error ? <ui.Text wrap="wrap">{`      ${l.error}`}</ui.Text> : null}
               </ui.Box>
             ))}
           </ui.Box>
