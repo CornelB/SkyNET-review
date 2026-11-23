@@ -6,6 +6,8 @@
 #   seat_describe  echoes "<model>, <sandbox>" for status lines.
 #   seat_invoke    runs the CLI once: prompt text in $PROMPT, cwd is the
 #                  worktree, report to $OUT, stderr and noise to $LOG.
+#   seat_failure   optional: echoes the reason of a failed seat_invoke, or
+#                  nothing for the default "exit <code>".
 #
 # CONTRACT
 #   <seat>.sh -w <worktree> -p <prompt-file> -o <report-file> -t <seconds>
@@ -76,7 +78,9 @@ seat_main() {
   elif [ "$rc" -eq 0 ]; then
     echo "$SEAT|ok|$(seat_describe)"
   else
-    echo "$SEAT|did-not-report|exit $rc (see $(basename "$LOG"))"
+    reason=""
+    if declare -F seat_failure >/dev/null; then reason=$(seat_failure); fi
+    echo "$SEAT|did-not-report|${reason:-exit $rc (see $(basename "$LOG"))}"
   fi
   exit 0
 }

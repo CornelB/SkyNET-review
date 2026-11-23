@@ -105,7 +105,27 @@ seat_invoke() {
   [ -n "$ctx" ] && set -- -c "model_context_window=$ctx" -c "model_auto_compact_token_limit=$(( ctx * 3 / 4 ))"
   CODEX_HOME="$home" codex exec --oss --local-provider ollama -c model_provider=ollama "$@" \
     -m "$OLLAMA_REVIEWER_MODEL" -s read-only --skip-git-repo-check -C "$WORKTREE" \
-    -o "$OUT" "$PROMPT" >"$LOG" 2>&1
+    -o "$OUT" "$PROMPT" >"$LOG" 2>&1 &
+  codex_pid=$!
+  # A local model that compacts loses the files it read, reads them again and
+  # runs to the cap with no report: the first compaction ends the cell.
+  while kill -0 "$codex_pid" 2>/dev/null; do
+    if codex_compacted; then
+      rc_kill_tree "$codex_pid"; wait "$codex_pid" 2>/dev/null
+      return 1
+    fi
+    sleep 1
+  done
+  wait "$codex_pid"
+}
+
+# codex prints this line, alone, when it compacts the conversation.
+codex_compacted() { grep -qx 'context compacted' "$LOG" 2>/dev/null; }
+
+seat_failure() {
+  codex_compacted || return 0
+  ctx=$(ollama_ctx "")
+  echo "context exhausted${ctx:+ ($ctx tokens)}, codex compacted (see $(basename "$LOG"))"
 }
 
 # shellcheck source=../lib/seat.sh

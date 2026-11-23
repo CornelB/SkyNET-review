@@ -261,6 +261,16 @@ EOF
   [ "$(grep -c '^model_auto_compact_token_limit=24576$' "$FAKE_LOG.config")" -eq 4 ]
 }
 
+@test "codex-oss ends a lens at the first compaction, with no retry" {
+  fake_codex; fake_ollama_show
+  d=$(prepared_run)
+  OLLAMA_REVIEWER_MODEL=m FAKE_NUM_CTX=32768 FAKE_MODE=compact RC_CAP_SECONDS=20 run tribunal run -s codex-oss "$d"
+  [ "$status" -eq 0 ]
+  [ "$(cat "$d"/reports/*.codex-oss.status | grep -c '|codex-oss|did-not-report|context exhausted (32768 tokens), codex compacted')" -eq 4 ]
+  [ ! -e "$d/reports/.retry-codex-oss" ]
+  ! grep -q 'end oss' "$FAKE_LOG"
+}
+
 @test "codex-oss passes no context when none is stated or ollama show fails" {
   fake_codex; fake_ollama_show
   d=$(prepared_run)
