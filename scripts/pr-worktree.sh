@@ -131,7 +131,13 @@ case "$ARG" in *://*)
   [ "$ARG_OR" = "$ORIGIN_OR" ] || die "wrong repo: PR URL is for $ARG_OR but origin is $ORIGIN_OR — run the review in a checkout of $ARG_OR (pull/$N/head here would be a different, real PR)"
 esac
 
-VIEW=$(gh pr view "$N" -R "$ORIGIN_OR" --json title,body,baseRefName,headRefOid,url 2>&1) || die "gh pr view failed: $VIEW"
+# stderr stays out of VIEW: gh prints hints there even on success, and they
+# would break the JSON parse. It is shown only when gh fails.
+GH_ERR=$(mktemp "$TMPROOT/pr-worktree-gh.XXXXXX") || die "cannot create a temp file in $TMPROOT"
+VIEW=$(gh pr view "$N" -R "$ORIGIN_OR" --json title,body,baseRefName,headRefOid,url 2>"$GH_ERR") || {
+  ERR=$(cat "$GH_ERR"); rm -f "$GH_ERR"; die "gh pr view failed: $ERR"
+}
+rm -f "$GH_ERR"
 if command -v jq >/dev/null 2>&1; then
   TITLE=$(printf '%s' "$VIEW" | jq -r .title)
   BODY=$(printf '%s' "$VIEW" | jq -r .body)
