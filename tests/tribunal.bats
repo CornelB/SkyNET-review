@@ -194,7 +194,7 @@ EOF
   d=$(prepared_run)
   FAKE_MODE=sleep RC_CAP_SECONDS=1 run tribunal run -s codex "$d"
   [ "$status" -eq 0 ]
-  [ "$(cat "$d"/reports/*.codex.status | grep -c 'retried at 2s')" -eq 1 ]
+  [ "$(cat "$d"/reports/*.codex.status | grep -c '2s cap hit after a retry, [0-9]* bytes of report and log$')" -eq 1 ]
   [ "$(cat "$d"/reports/*.codex.status | grep -c '|codex|timeout|')" -eq 4 ]
   grep -q '"cap":1' "$d/status.json"
 }

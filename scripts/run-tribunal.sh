@@ -183,7 +183,7 @@ run_cell() { # $1=seat $2=lens
   seat=$1 lens=$2
   out="$RUN_DIR/reports/$lens.$seat.md" log="$RUN_DIR/reports/$lens.$seat.log"
   line=$(bash "$SEATS_DIR/$seat.sh" -w "$WORKTREE" -p "$RUN_DIR/prompts/$lens.md" -o "$out" -t "$CAP" 2>>"$log")
-  status=$(printf '%s' "$line" | cut -d'|' -f2)
+  status=$(printf '%s' "$line" | cut -d'|' -f2) used=$CAP retried=""
   detail=$(printf '%s' "$line" | cut -d'|' -f3-)
   if [ "$status" = timeout ] && [ "${detail:-0}" -gt 0 ] 2>/dev/null \
      && mkdir "$RUN_DIR/reports/.retry-$seat" 2>/dev/null; then
@@ -191,13 +191,14 @@ run_cell() { # $1=seat $2=lens
     echo "== retry at ${raised}s after timeout with ${detail} bytes ==" >>"$RUN_DIR/reports/$lens.$seat.retry.log"
     line=$(bash "$SEATS_DIR/$seat.sh" -w "$WORKTREE" -p "$RUN_DIR/prompts/$lens.md" -o "$out" -t "$raised" 2>>"$log")
     status=$(printf '%s' "$line" | cut -d'|' -f2)
-    detail="$(printf '%s' "$line" | cut -d'|' -f3-) (retried at ${raised}s)"
+    detail=$(printf '%s' "$line" | cut -d'|' -f3-) used=$raised retried=" after a retry"
+    [ "$status" = timeout ] || detail="$detail (retried at ${raised}s)"
   fi
   case "$status" in
     ok)
       v=$(rc_validate_report "$out" "$log")
       if [ "${v%%|*}" = ok ]; then final="ok|$detail"; else final="$v"; fi ;;
-    timeout) final="timeout|${detail} bytes at cap" ;;
+    timeout) final="timeout|${used}s cap hit${retried}, ${detail} bytes of report and log" ;;
     skipped|did-not-report) final="$status|$detail" ;;
     *) final="did-not-report|seat script printed no status line (see $(basename "$log"))" ;;
   esac
